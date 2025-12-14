@@ -6,7 +6,7 @@ This project contains custom firmware compatible with a number of different CH55
 
 Please see [#development](#development) for instructions on manually building the project from source.
 
-Open https://keypad-flasher.amyjeanes.com in a WebUSB compatible browser (anything based on Chromium, e.g. Chrome, Edge, Opera)
+If you just want to use it, visit https://keypad-flasher.amyjeanes.com for the hosted version of the web app in a WebUSB compatible browser (anything based on Chromium, e.g. Chrome, Edge, Opera)
 
 You will need to ensure the device is plugged in while in bootloader mode to be recognised and flashed by the app.
 
