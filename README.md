@@ -1,4 +1,4 @@
-# Keypad
+# KeypadFlasher
 
 This project contains custom firmware compatible with a number of different CH55x based programmable keypads found on sites like Aliexpress and Amazon.
 
