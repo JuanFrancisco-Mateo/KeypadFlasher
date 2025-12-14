@@ -72,7 +72,7 @@ Please note that the original firmware on the device will be lost when you flash
 
 The following is a list of tested and known compatible devices, but other devices using the CH55x series microcontrollers may also work.
 
-If you find and test new compatible device, please raise a PR to add it to this list for everyone else to use!
+If you find and successfully test a new compatible device not in this list, please raise a PR to add it below for everyone else to use!
 
 They all have USB-C connectors unless otherwise noted:
 
