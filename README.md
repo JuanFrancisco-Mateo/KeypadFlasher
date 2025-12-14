@@ -81,12 +81,12 @@ They all have USB-C connectors unless otherwise noted:
 
 These devices have been tested and found to use different types of microcontrollers, and are not compatible with this firmware:
 
-- [12 Keys 2 Knobs](https://www.aliexpress.com/item/1005007160113318.html?spm=a2g0o.order_detail.order_detail_item.3.5bd6f19cdqcQwn)
-  - Uses a CH579M microcontroller
-  - Can remap keys using https://github.com/kriomant/ch57x-keyboard-tool or other CH57x programming tools
 - [9 Keys](https://www.aliexpress.com/item/1005005307250747.html?spm=a2g0o.order_detail.order_detail_item.5.3c7af19cNrdJJB)
   - Uses a CH32V203 microcontroller
   - Can remap keys using https://sayodevice.com/ web-based flasher (similar to this project!)
+- [12 Keys 2 Knobs](https://www.aliexpress.com/item/1005007160113318.html?spm=a2g0o.order_detail.order_detail_item.3.5bd6f19cdqcQwn)
+  - Uses a CH579M microcontroller
+  - Can remap keys using https://github.com/kriomant/ch57x-keyboard-tool or other CH57x programming tools
 
 ## Development
 
