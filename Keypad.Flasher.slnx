@@ -4,4 +4,5 @@
     <Deploy />
   </Project>
   <Project Path="Keypad.Flasher.Server/Keypad.Flasher.Server.csproj" Id="ec07647e-61e5-4f36-836e-1f25ebff903b" />
+  <Project Path="Keypad.Flasher.Server.Tests/Keypad.Flasher.Server.Tests.csproj" Id="b4d5f3e2-3c4a-4d2e-9f7a-2d3e5f6a7b8c" />
 </Solution>
