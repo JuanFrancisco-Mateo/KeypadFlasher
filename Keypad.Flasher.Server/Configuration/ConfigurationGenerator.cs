@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace Keypad.Flasher.Server.Configuration
@@ -9,6 +6,8 @@ namespace Keypad.Flasher.Server.Configuration
     {
         public string GenerateHeader(ConfigurationDefinition configuration)
         {
+            var neoPixelCount = CalculateNeoPixelCount(configuration.Buttons);
+
             var sb = new StringBuilder();
             sb.AppendLine("#pragma once");
             sb.AppendLine();
@@ -16,6 +15,10 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine();
             sb.AppendLine($"#define CONFIGURATION_BUTTON_CAPACITY {configuration.Buttons.Count}");
             sb.AppendLine($"#define CONFIGURATION_ENCODER_CAPACITY {configuration.Encoders.Count}");
+            sb.AppendLine();
+            sb.AppendLine("#define PIN_NEO P34");
+            sb.AppendLine($"#define NEO_COUNT {neoPixelCount}");
+            sb.AppendLine("#define NEO_GRB");
             return sb.ToString();
         }
 
@@ -37,6 +40,14 @@ namespace Keypad.Flasher.Server.Configuration
 
         private static void AppendButtonBindings(StringBuilder sb, IReadOnlyList<ButtonBinding> buttons)
         {
+            if (buttons.Count == 0)
+            {
+                sb.AppendLine("const button_binding_t button_bindings[] = {");
+                AppendLine(sb, 1, "{0}");
+                sb.AppendLine("};");
+                return;
+            }
+
             sb.AppendLine("const button_binding_t button_bindings[] = {");
             for (int i = 0; i < buttons.Count; i++)
             {
@@ -58,6 +69,14 @@ namespace Keypad.Flasher.Server.Configuration
 
         private static void AppendEncoderBindings(StringBuilder sb, IReadOnlyList<EncoderBinding> encoders)
         {
+            if (encoders.Count == 0)
+            {
+                sb.AppendLine("const encoder_binding_t encoder_bindings[] = {");
+                AppendLine(sb, 1, "{0}");
+                sb.AppendLine("};");
+                return;
+            }
+
             sb.AppendLine("const encoder_binding_t encoder_bindings[] = {");
             for (int i = 0; i < encoders.Count; i++)
             {
@@ -75,6 +94,21 @@ namespace Keypad.Flasher.Server.Configuration
             }
 
             sb.AppendLine("const size_t encoder_binding_count = sizeof(encoder_bindings) / sizeof(encoder_bindings[0]);");
+        }
+
+        private static int CalculateNeoPixelCount(IReadOnlyCollection<ButtonBinding> buttons)
+        {
+            var maxLedIndex = -1;
+            foreach (var button in buttons)
+            {
+                if (button.LedIndex > maxLedIndex)
+                {
+                    maxLedIndex = button.LedIndex;
+                }
+            }
+
+            var count = maxLedIndex + 1;
+            return count < 1 ? 1 : count;
         }
 
         private static void AppendButton(StringBuilder sb, ButtonBinding button, bool isLast)

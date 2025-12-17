@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Keypad.Flasher.Server.Configuration
 {
     public enum HidBindingType

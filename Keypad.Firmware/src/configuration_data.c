@@ -2,7 +2,7 @@
 
 #include "../configuration.h"
 
-static bool button_state_storage_s[CONFIGURATION_BUTTON_CAPACITY];
+static bool button_state_storage_s[CONFIGURATION_BUTTON_CAPACITY > 0 ? CONFIGURATION_BUTTON_CAPACITY : 1];
 
 size_t configuration_button_state_capacity(void)
 {
@@ -14,9 +14,15 @@ bool *configuration_button_state_storage(void)
     return button_state_storage_s;
 }
 
+#if CONFIGURATION_ENCODER_CAPACITY > 0
 static uint8_t encoder_prev_storage_s[CONFIGURATION_ENCODER_CAPACITY];
 static long encoder_position_storage_s[CONFIGURATION_ENCODER_CAPACITY];
 static long encoder_reported_storage_s[CONFIGURATION_ENCODER_CAPACITY];
+#else
+static uint8_t encoder_prev_storage_s[1];
+static long encoder_position_storage_s[1];
+static long encoder_reported_storage_s[1];
+#endif
 
 size_t configuration_encoder_state_capacity(void)
 {

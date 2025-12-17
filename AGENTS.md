@@ -15,3 +15,4 @@ Keypad.Flasher.Server:
 - Use `dotnet build` to compile
 - Use `dotnet test` to run unit tests
 - Always run build and unit tests after changing backend code
+- `ImplicitUsings` is enabled so common namespaces are included automatically and do not need to be added

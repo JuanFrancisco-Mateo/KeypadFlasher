@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Keypad.Flasher.Server.Configuration;
@@ -141,29 +140,29 @@ namespace Keypad.Flasher.Server.Controllers
                     BootloaderOnBoot: false,
                     BootloaderChordMember: true,
                     Function: new HidSequenceBinding("b", 0)),
-                new ButtonBinding(
-                    Pin: 16,
-                    ActiveLow: true,
-                    LedIndex: 2,
-                    BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("c", 0)),
-                new ButtonBinding(
-                    Pin: 33,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("d", 0))
+                // new ButtonBinding(
+                //     Pin: 16,
+                //     ActiveLow: true,
+                //     LedIndex: 2,
+                //     BootloaderOnBoot: false,
+                //     BootloaderChordMember: true,
+                //     Function: new HidSequenceBinding("c", 0)),
+                // new ButtonBinding(
+                //     Pin: 33,
+                //     ActiveLow: true,
+                //     LedIndex: -1,
+                //     BootloaderOnBoot: true,
+                //     BootloaderChordMember: true,
+                //     Function: new HidSequenceBinding("d", 0))
             };
 
             var encoders = new List<EncoderBinding>
             {
-                new EncoderBinding(
-                    PinA: 31,
-                    PinB: 30,
-                    Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
-                    CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
+                // new EncoderBinding(
+                //     PinA: 31,
+                //     PinB: 30,
+                //     Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
+                //     CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
             return new ConfigurationDefinition(buttons, encoders);

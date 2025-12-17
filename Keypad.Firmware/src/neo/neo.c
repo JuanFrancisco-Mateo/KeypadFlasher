@@ -17,6 +17,7 @@
 // ===================================================================================
 // Libraries, Variables and Constants
 // ===================================================================================
+#include "../../configuration.h"
 #include "neo.h"
 
 #define NEOPIN PIN_asm(PIN_NEO)             // convert PIN_NEO for inline assembly

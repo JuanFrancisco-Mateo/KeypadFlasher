@@ -3,6 +3,7 @@
 #endif
 
 //lib include
+#include "configuration.h"
 #include "src/neo/neo.h"
 #include "src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h"
 
@@ -12,11 +13,6 @@
 #include "src/hid.h"
 #include "src/led.h"
 #include "src/util.h"
-#include "configuration.h"
-#define LED_PIN 34 // Pin for the LED strip, configure neo leds in src/neo/config.h
-
-
-
 
 // ===================================================================================
 // Main section

@@ -16,4 +16,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Keypad.Flasher.Server\Keypad.Flasher.Server.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="ExpectedOutputs\ConfigurationGenerator\*.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

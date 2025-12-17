@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "../configuration.h"
 #include "neo/neo.h"
 #include "led.h"
 

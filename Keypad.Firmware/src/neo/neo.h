@@ -18,7 +18,18 @@
 #include <stdint.h>
 #include "gpio.h"
 #include "delay.h"
-#include "config.h"
+
+#ifndef PIN_NEO
+#error "PIN_NEO must be defined before including neo.h"
+#endif
+
+#ifndef NEO_COUNT
+#error "NEO_COUNT must be defined before including neo.h"
+#endif
+
+#if !defined(NEO_GRB) && !defined(NEO_RGB)
+#error "Either NEO_GRB or NEO_RGB must be defined before including neo.h"
+#endif
 
 #define NEO_init()  PIN_low(PIN_NEO);PIN_output(PIN_NEO)              // init NeoPixels
 #define NEO_latch() DLY_us(281)                                       // latch colors
