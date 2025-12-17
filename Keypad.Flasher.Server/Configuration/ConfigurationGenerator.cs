@@ -1,0 +1,152 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Keypad.Flasher.Server.Configuration
+{
+    public class ConfigurationGenerator
+    {
+        public string GenerateHeader(ConfigurationDefinition configuration)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("#pragma once");
+            sb.AppendLine();
+            sb.AppendLine("#include \"configuration_data.h\"");
+            sb.AppendLine();
+            sb.AppendLine($"#define CONFIGURATION_BUTTON_CAPACITY {configuration.Buttons.Count}");
+            sb.AppendLine($"#define CONFIGURATION_ENCODER_CAPACITY {configuration.Encoders.Count}");
+            return sb.ToString();
+        }
+
+        public string GenerateSource(ConfigurationDefinition configuration)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("#include \"configuration.h\"");
+            sb.AppendLine("#include \"src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h\"");
+            sb.AppendLine();
+            AppendButtonBindings(sb, configuration.Buttons);
+            sb.AppendLine();
+            AppendButtonCount(sb, configuration.Buttons);
+            sb.AppendLine();
+            AppendEncoderBindings(sb, configuration.Encoders);
+            sb.AppendLine();
+            AppendEncoderCount(sb, configuration.Encoders);
+            return sb.ToString();
+        }
+
+        private static void AppendButtonBindings(StringBuilder sb, IReadOnlyList<ButtonBinding> buttons)
+        {
+            sb.AppendLine("const button_binding_t button_bindings[] = {");
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                AppendButton(sb, buttons[i], i == buttons.Count - 1);
+            }
+            sb.AppendLine("};");
+        }
+
+        private static void AppendButtonCount(StringBuilder sb, IReadOnlyCollection<ButtonBinding> buttons)
+        {
+            if (buttons.Count == 0)
+            {
+                sb.AppendLine("const size_t button_binding_count = 0;");
+                return;
+            }
+
+            sb.AppendLine("const size_t button_binding_count = sizeof(button_bindings) / sizeof(button_bindings[0]);");
+        }
+
+        private static void AppendEncoderBindings(StringBuilder sb, IReadOnlyList<EncoderBinding> encoders)
+        {
+            sb.AppendLine("const encoder_binding_t encoder_bindings[] = {");
+            for (int i = 0; i < encoders.Count; i++)
+            {
+                AppendEncoder(sb, encoders[i], i == encoders.Count - 1);
+            }
+            sb.AppendLine("};");
+        }
+
+        private static void AppendEncoderCount(StringBuilder sb, IReadOnlyCollection<EncoderBinding> encoders)
+        {
+            if (encoders.Count == 0)
+            {
+                sb.AppendLine("const size_t encoder_binding_count = 0;");
+                return;
+            }
+
+            sb.AppendLine("const size_t encoder_binding_count = sizeof(encoder_bindings) / sizeof(encoder_bindings[0]);");
+        }
+
+        private static void AppendButton(StringBuilder sb, ButtonBinding button, bool isLast)
+        {
+            AppendLine(sb, 1, "{");
+            AppendLine(sb, 2, $".pin = {button.Pin},");
+            AppendLine(sb, 2, $".active_low = {ToCBoolean(button.ActiveLow)},");
+            AppendLine(sb, 2, $".led_index = {button.LedIndex},");
+            AppendLine(sb, 2, $".bootloader_on_boot = {ToCBoolean(button.BootloaderOnBoot)},");
+            AppendLine(sb, 2, $".bootloader_chord_member = {ToCBoolean(button.BootloaderChordMember)},");
+            AppendBindingBlock(sb, 2, "function", button.Function, appendTrailingComma: false);
+            AppendLine(sb, 1, isLast ? "}" : "},");
+        }
+
+        private static void AppendEncoder(StringBuilder sb, EncoderBinding encoder, bool isLast)
+        {
+            AppendLine(sb, 1, "{");
+            AppendLine(sb, 2, $".pin_a = {encoder.PinA},");
+            AppendLine(sb, 2, $".pin_b = {encoder.PinB},");
+            AppendBindingBlock(sb, 2, "clockwise", encoder.Clockwise, appendTrailingComma: true);
+            AppendBindingBlock(sb, 2, "counter_clockwise", encoder.CounterClockwise, appendTrailingComma: false);
+            AppendLine(sb, 1, isLast ? "}" : "},");
+        }
+
+        private static void AppendBindingBlock(StringBuilder sb, int indentLevel, string fieldName, HidBinding binding, bool appendTrailingComma)
+        {
+            AppendLine(sb, indentLevel, $".{fieldName} = {{");
+            AppendBindingContent(sb, indentLevel + 1, binding);
+            AppendLine(sb, indentLevel, appendTrailingComma ? "}," : "}");
+        }
+
+        private static void AppendBindingContent(StringBuilder sb, int indentLevel, HidBinding binding)
+        {
+            switch (binding)
+            {
+                case HidSequenceBinding sequenceBinding:
+                    AppendLine(sb, indentLevel, ".type = HID_BINDING_SEQUENCE,");
+                    AppendLine(sb, indentLevel, ".function.sequence = {");
+                    AppendLine(sb, indentLevel + 1, $".sequence = {{{string.Join(", ", sequenceBinding.Sequence.Select(ToCharLiteral))}}},");
+                    AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Sequence.Length},");
+                    AppendLine(sb, indentLevel + 1, $".delay = {sequenceBinding.Delay}");
+                    AppendLine(sb, indentLevel, "}");
+                    break;
+                case HidFunctionBinding functionBinding:
+                    AppendLine(sb, indentLevel, ".type = HID_BINDING_FUNCTION,");
+                    AppendLine(sb, indentLevel, $".function.functionPointer = {functionBinding.FunctionPointer}");
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unsupported binding type: {binding.GetType().Name}");
+            }
+        }
+
+        private static void AppendLine(StringBuilder sb, int indentLevel, string text)
+        {
+            sb.Append(new string(' ', indentLevel * 4));
+            sb.AppendLine(text);
+        }
+
+        private static string ToCBoolean(bool value) => value ? "true" : "false";
+
+        private static string ToCharLiteral(char value)
+        {
+            return value switch
+            {
+                '\\' => "'\\\\'",
+                '\'' => "'\\\''",
+                '\n' => "'\\n'",
+                '\r' => "'\\r'",
+                '\t' => "'\\t'",
+                _ when value < 32 || value > 126 => $"0x{((int)value):X2}",
+                _ => $"'{value}'"
+            };
+        }
+    }
+}

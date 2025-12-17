@@ -1,7 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Keypad.Flasher.Server.Configuration;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Keypad.Flasher.Server.Controllers
 {
@@ -11,6 +13,8 @@ namespace Keypad.Flasher.Server.Controllers
     {
         private readonly Settings _settings;
         private readonly ILogger<FlasherController> _logger;
+        private static readonly object _compileLock = new(); // serialize firmware builds across requests
+        private static readonly ConfigurationGenerator _configurationGenerator = new();
 
         public FlasherController(IOptions<Settings> settings, ILogger<FlasherController> logger)
         {
@@ -21,87 +25,143 @@ namespace Keypad.Flasher.Server.Controllers
         [HttpGet(Name = "GetFirmware")]
         public ActionResult<Firmware> Get()
         {
+            var firmwarePath = Path.GetFullPath(_settings.FirmwarePath);
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempPath);
-            try
+            lock (_compileLock)
             {
-                // arduino-cli compile --fqbn CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal --export-binaries
-                var args = new ProcessStartInfo
-                {
-                    FileName = "arduino-cli",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = Path.GetFullPath(_settings.FirmwarePath),
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                args.ArgumentList.Add("compile");
-                args.ArgumentList.Add("--fqbn");
-                args.ArgumentList.Add("CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal");
-                args.ArgumentList.Add("--config-file");
-                args.ArgumentList.Add("arduino-cli.yaml");
-                args.ArgumentList.Add("--export-binaries");
-                args.ArgumentList.Add("--output-dir");
-                args.ArgumentList.Add(tempPath);
+                var configuration = CreateDefaultConfiguration();
+                var headerPath = Path.Combine(firmwarePath, "configuration.h");
+                var sourcePath = Path.Combine(firmwarePath, "configuration.c");
+                System.IO.File.WriteAllText(headerPath, _configurationGenerator.GenerateHeader(configuration));
+                System.IO.File.WriteAllText(sourcePath, _configurationGenerator.GenerateSource(configuration));
 
-                var stdout = new StringBuilder();
-                var stderr = new StringBuilder();
-
-                using (var process = Process.Start(args))
-                {
-                    if (process == null)
-                    {
-                        _logger.LogError("Failed to start arduino-cli process.");
-                        return StatusCode(500, new { error = "Failed to start arduino-cli process." });
-                    }
-
-                    process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
-                    process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-
-                    process.WaitForExit();
-
-                    if (process.ExitCode != 0)
-                    {
-                        _logger.LogError("arduino-cli compile failed. ExitCode: {ExitCode}\nStdOut:\n{StdOut}\nStdErr:\n{StdErr}", process.ExitCode, stdout.ToString(), stderr.ToString());
-                        return StatusCode(500, new
-                        {
-                            error = "Compile failed",
-                            exitCode = process.ExitCode,
-                            stdout = stdout.ToString(),
-                            stderr = stderr.ToString()
-                        });
-                    }
-
-                    _logger.LogInformation("arduino-cli compile succeeded. ExitCode: {ExitCode}\nStdOut:\n{StdOut}", process.ExitCode, stdout.ToString());
-                }
-
-                var path = Path.Combine(tempPath, "Keypad.Firmware.ino.hex");
-
-                if (!System.IO.File.Exists(path))
-                {
-                    _logger.LogError("Compiled firmware file not found at {Path}", path);
-                    return StatusCode(500, new { error = "Compiled firmware file not found." });
-                }
-
-                var fileBytes = System.IO.File.ReadAllBytes(path);
-
-                return new Firmware(fileBytes);
-            }
-            finally
-            {
+                Directory.CreateDirectory(tempPath);
                 try
                 {
-                    Directory.Delete(tempPath, true);
+                    // arduino-cli compile --fqbn CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal --export-binaries
+                    var args = new ProcessStartInfo
+                    {
+                        FileName = "arduino-cli",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        WorkingDirectory = firmwarePath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    args.ArgumentList.Add("compile");
+                    args.ArgumentList.Add("--fqbn");
+                    args.ArgumentList.Add("CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal");
+                    args.ArgumentList.Add("--config-file");
+                    args.ArgumentList.Add("arduino-cli.yaml");
+                    args.ArgumentList.Add("--export-binaries");
+                    args.ArgumentList.Add("--output-dir");
+                    args.ArgumentList.Add(tempPath);
+
+                    var stdout = new StringBuilder();
+                    var stderr = new StringBuilder();
+
+                    using (var process = Process.Start(args))
+                    {
+                        if (process == null)
+                        {
+                            _logger.LogError("Failed to start arduino-cli process.");
+                            return StatusCode(500, new { error = "Failed to start arduino-cli process." });
+                        }
+
+                        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+                        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+
+                        process.WaitForExit();
+
+                        if (process.ExitCode != 0)
+                        {
+                            _logger.LogError("arduino-cli compile failed. ExitCode: {ExitCode}\nStdOut:\n{StdOut}\nStdErr:\n{StdErr}", process.ExitCode, stdout.ToString(), stderr.ToString());
+                            return StatusCode(500, new
+                            {
+                                error = "Compile failed",
+                                exitCode = process.ExitCode,
+                                stdout = stdout.ToString(),
+                                stderr = stderr.ToString()
+                            });
+                        }
+
+                        _logger.LogInformation("arduino-cli compile succeeded. ExitCode: {ExitCode}\nStdOut:\n{StdOut}", process.ExitCode, stdout.ToString());
+                    }
+
+                    var path = Path.Combine(tempPath, "Keypad.Firmware.ino.hex");
+
+                    if (!System.IO.File.Exists(path))
+                    {
+                        _logger.LogError("Compiled firmware file not found at {Path}", path);
+                        return StatusCode(500, new { error = "Compiled firmware file not found." });
+                    }
+
+                    var fileBytes = System.IO.File.ReadAllBytes(path);
+
+                    return new Firmware(fileBytes);
                 }
-                catch (Exception ex)
+                finally
                 {
-                    _logger.LogWarning(ex, "Failed to cleanup temp directory {TempPath}", tempPath);
+                    try
+                    {
+                        Directory.Delete(tempPath, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to cleanup temp directory {TempPath}", tempPath);
+                    }
                 }
             }
         }
 
         public record Firmware(byte[] FileBytes);
+
+        internal static ConfigurationDefinition CreateDefaultConfiguration()
+        {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 11,
+                    ActiveLow: true,
+                    LedIndex: 0,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("a", 0)),
+                new ButtonBinding(
+                    Pin: 17,
+                    ActiveLow: true,
+                    LedIndex: 1,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("b", 0)),
+                new ButtonBinding(
+                    Pin: 16,
+                    ActiveLow: true,
+                    LedIndex: 2,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("c", 0)),
+                new ButtonBinding(
+                    Pin: 33,
+                    ActiveLow: true,
+                    LedIndex: -1,
+                    BootloaderOnBoot: true,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("d", 0))
+            };
+
+            var encoders = new List<EncoderBinding>
+            {
+                new EncoderBinding(
+                    PinA: 31,
+                    PinB: 30,
+                    Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
+                    CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
+            };
+
+            return new ConfigurationDefinition(buttons, encoders);
+        }
     }
 }
