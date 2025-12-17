@@ -1,3 +1,7 @@
+#include "../../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
+
 #include "USBconstant.h"
 
 // Device descriptor
@@ -204,3 +208,5 @@ __code uint16_t ManufacturerDescriptor[] = {
     // SDCC is little endian
     (((6 + 1) * 2) | (DTYPE_String << 8)), 'D', 'e', 'q', 'i', 'n', 'g',
 };
+
+#endif

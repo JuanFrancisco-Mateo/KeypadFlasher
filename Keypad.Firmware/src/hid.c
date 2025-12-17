@@ -3,6 +3,9 @@
 #include "led.h"
 #include "hid.h"
 #include "configuration_data.h"
+#include "../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
 
 #define HID_CONSUMER_VOLUME_INCREMENT 0x00E9
 #define HID_CONSUMER_VOLUME_DECREMENT 0x00EA
@@ -181,3 +184,5 @@ void hid_service(void)
     }
   }
 }
+
+#endif

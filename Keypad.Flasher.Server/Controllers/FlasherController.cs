@@ -34,6 +34,13 @@ namespace Keypad.Flasher.Server.Controllers
                 var outputPath = Path.Combine(tempPath, "output");
 
                 var configuration = CreateDefaultConfiguration();
+                if (IsDebugRequested())
+                {
+                    configuration = configuration with { DebugMode = true };
+                }
+                var fqbn = configuration.DebugMode
+                    ? "CH55xDuino:mcs51:ch552:usb_settings=usbcdc,clock=16internal"
+                    : "CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal";
                 var headerPath = Path.Combine(workingFirmwarePath, "configuration.h");
                 var sourcePath = Path.Combine(workingFirmwarePath, "configuration.c");
                 System.IO.File.WriteAllText(headerPath, _configurationGenerator.GenerateHeader(configuration));
@@ -54,7 +61,7 @@ namespace Keypad.Flasher.Server.Controllers
                     };
                     args.ArgumentList.Add("compile");
                     args.ArgumentList.Add("--fqbn");
-                    args.ArgumentList.Add("CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal");
+                    args.ArgumentList.Add(fqbn);
                     args.ArgumentList.Add("--config-file");
                     args.ArgumentList.Add("arduino-cli.yaml");
                     args.ArgumentList.Add("--export-binaries");
@@ -127,45 +134,42 @@ namespace Keypad.Flasher.Server.Controllers
             var buttons = new List<ButtonBinding>
             {
                 new ButtonBinding(
-                    Pin: 11,
+                    Pin: 32,
                     ActiveLow: true,
                     LedIndex: 0,
                     BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("a", 0)),
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("1", 0)),
                 new ButtonBinding(
-                    Pin: 17,
+                    Pin: 14,
                     ActiveLow: true,
                     LedIndex: 1,
                     BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("b", 0)),
-                // new ButtonBinding(
-                //     Pin: 16,
-                //     ActiveLow: true,
-                //     LedIndex: 2,
-                //     BootloaderOnBoot: false,
-                //     BootloaderChordMember: true,
-                //     Function: new HidSequenceBinding("c", 0)),
-                // new ButtonBinding(
-                //     Pin: 33,
-                //     ActiveLow: true,
-                //     LedIndex: -1,
-                //     BootloaderOnBoot: true,
-                //     BootloaderChordMember: true,
-                //     Function: new HidSequenceBinding("d", 0))
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("2", 0))
             };
 
-            var encoders = new List<EncoderBinding>
+            return new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false);
+        }
+
+        private bool IsDebugRequested()
+        {
+            if (!Request.Query.TryGetValue("debug", out var values))
             {
-                // new EncoderBinding(
-                //     PinA: 31,
-                //     PinB: 30,
-                //     Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
-                //     CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
-            };
+                return false;
+            }
 
-            return new ConfigurationDefinition(buttons, encoders);
+            foreach (var value in values)
+            {
+                if (string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void CopyDirectory(string sourceDir, string destinationDir)

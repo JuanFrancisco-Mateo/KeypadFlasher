@@ -2,6 +2,10 @@
  created by Deqing Sun for use with CH55xduino
  */
 
+#include "../../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
+
 #include "USBhandler.h"
 
 #include "USBconstant.h"
@@ -516,3 +520,5 @@ void USBDeviceEndPointCfg() {
       UEP_R_RES_ACK | UEP_T_RES_NAK; // Manual flip, OUT transaction returns
                                      // ACK, IN transaction returns NAK
 }
+
+#endif

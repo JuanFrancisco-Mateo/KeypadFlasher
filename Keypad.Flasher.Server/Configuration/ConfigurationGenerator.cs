@@ -15,6 +15,7 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine();
             sb.AppendLine($"#define CONFIGURATION_BUTTON_CAPACITY {configuration.Buttons.Count}");
             sb.AppendLine($"#define CONFIGURATION_ENCODER_CAPACITY {configuration.Encoders.Count}");
+            sb.AppendLine($"#define CONFIGURATION_DEBUG_MODE {ToCInteger(configuration.DebugMode)}");
             sb.AppendLine();
             sb.AppendLine("#define PIN_NEO P34");
             sb.AppendLine($"#define NEO_COUNT {neoPixelCount}");
@@ -28,17 +29,17 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine("#include \"configuration.h\"");
             sb.AppendLine("#include \"src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h\"");
             sb.AppendLine();
-            AppendButtonBindings(sb, configuration.Buttons);
+            AppendButtonBindings(sb, configuration.Buttons, configuration.DebugMode);
             sb.AppendLine();
             AppendButtonCount(sb, configuration.Buttons);
             sb.AppendLine();
-            AppendEncoderBindings(sb, configuration.Encoders);
+            AppendEncoderBindings(sb, configuration.Encoders, configuration.DebugMode);
             sb.AppendLine();
             AppendEncoderCount(sb, configuration.Encoders);
             return sb.ToString();
         }
 
-        private static void AppendButtonBindings(StringBuilder sb, IReadOnlyList<ButtonBinding> buttons)
+        private static void AppendButtonBindings(StringBuilder sb, IReadOnlyList<ButtonBinding> buttons, bool debugMode)
         {
             if (buttons.Count == 0)
             {
@@ -51,7 +52,7 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine("const button_binding_t button_bindings[] = {");
             for (int i = 0; i < buttons.Count; i++)
             {
-                AppendButton(sb, buttons[i], i == buttons.Count - 1);
+                AppendButton(sb, buttons[i], i == buttons.Count - 1, debugMode);
             }
             sb.AppendLine("};");
         }
@@ -67,7 +68,7 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine("const size_t button_binding_count = sizeof(button_bindings) / sizeof(button_bindings[0]);");
         }
 
-        private static void AppendEncoderBindings(StringBuilder sb, IReadOnlyList<EncoderBinding> encoders)
+        private static void AppendEncoderBindings(StringBuilder sb, IReadOnlyList<EncoderBinding> encoders, bool debugMode)
         {
             if (encoders.Count == 0)
             {
@@ -80,7 +81,7 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine("const encoder_binding_t encoder_bindings[] = {");
             for (int i = 0; i < encoders.Count; i++)
             {
-                AppendEncoder(sb, encoders[i], i == encoders.Count - 1);
+                AppendEncoder(sb, encoders[i], i == encoders.Count - 1, debugMode);
             }
             sb.AppendLine("};");
         }
@@ -111,7 +112,7 @@ namespace Keypad.Flasher.Server.Configuration
             return count < 1 ? 1 : count;
         }
 
-        private static void AppendButton(StringBuilder sb, ButtonBinding button, bool isLast)
+        private static void AppendButton(StringBuilder sb, ButtonBinding button, bool isLast, bool debugMode)
         {
             AppendLine(sb, 1, "{");
             AppendLine(sb, 2, $".pin = {button.Pin},");
@@ -119,24 +120,32 @@ namespace Keypad.Flasher.Server.Configuration
             AppendLine(sb, 2, $".led_index = {button.LedIndex},");
             AppendLine(sb, 2, $".bootloader_on_boot = {ToCBoolean(button.BootloaderOnBoot)},");
             AppendLine(sb, 2, $".bootloader_chord_member = {ToCBoolean(button.BootloaderChordMember)},");
-            AppendBindingBlock(sb, 2, "function", button.Function, appendTrailingComma: false);
+            AppendBindingBlock(sb, 2, "function", button.Function, debugMode, appendTrailingComma: false);
             AppendLine(sb, 1, isLast ? "}" : "},");
         }
 
-        private static void AppendEncoder(StringBuilder sb, EncoderBinding encoder, bool isLast)
+        private static void AppendEncoder(StringBuilder sb, EncoderBinding encoder, bool isLast, bool debugMode)
         {
             AppendLine(sb, 1, "{");
             AppendLine(sb, 2, $".pin_a = {encoder.PinA},");
             AppendLine(sb, 2, $".pin_b = {encoder.PinB},");
-            AppendBindingBlock(sb, 2, "clockwise", encoder.Clockwise, appendTrailingComma: true);
-            AppendBindingBlock(sb, 2, "counter_clockwise", encoder.CounterClockwise, appendTrailingComma: false);
+            AppendBindingBlock(sb, 2, "clockwise", encoder.Clockwise, debugMode, appendTrailingComma: true);
+            AppendBindingBlock(sb, 2, "counter_clockwise", encoder.CounterClockwise, debugMode, appendTrailingComma: false);
             AppendLine(sb, 1, isLast ? "}" : "},");
         }
 
-        private static void AppendBindingBlock(StringBuilder sb, int indentLevel, string fieldName, HidBinding binding, bool appendTrailingComma)
+        private static void AppendBindingBlock(StringBuilder sb, int indentLevel, string fieldName, HidBinding binding, bool debugMode, bool appendTrailingComma)
         {
             AppendLine(sb, indentLevel, $".{fieldName} = {{");
-            AppendBindingContent(sb, indentLevel + 1, binding);
+            if (debugMode)
+            {
+                AppendLine(sb, indentLevel + 1, ".type = HID_BINDING_NULL,");
+                AppendLine(sb, indentLevel + 1, ".function.functionPointer = 0");
+            }
+            else
+            {
+                AppendBindingContent(sb, indentLevel + 1, binding);
+            }
             AppendLine(sb, indentLevel, appendTrailingComma ? "}," : "}");
         }
 
@@ -168,6 +177,8 @@ namespace Keypad.Flasher.Server.Configuration
         }
 
         private static string ToCBoolean(bool value) => value ? "true" : "false";
+
+        private static string ToCInteger(bool value) => value ? "1" : "0";
 
         private static string ToCharLiteral(char value)
         {

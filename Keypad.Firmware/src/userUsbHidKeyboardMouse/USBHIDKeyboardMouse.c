@@ -1,3 +1,7 @@
+#include "../../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
+
 // clang-format off
 #include <stdint.h>
 #include <string.h>
@@ -433,3 +437,4 @@ uint8_t Mouse_scroll(__data int8_t tilt) {
   USB_EP1_send(2);
   return 1;
 }
+#endif

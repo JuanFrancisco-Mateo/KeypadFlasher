@@ -7,6 +7,9 @@
 
 #include "hid.h"
 #include "configuration_data.h"
+#include "../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
 
 // lookup table for quadrature transitions (prev<<2 | current)
 static const int8_t rotary_table_s[16] = {
@@ -97,3 +100,5 @@ void encoder_update(void)
         }
     }
 }
+
+#endif

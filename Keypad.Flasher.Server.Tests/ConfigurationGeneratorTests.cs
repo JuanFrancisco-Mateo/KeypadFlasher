@@ -17,7 +17,8 @@ namespace Keypad.Flasher.Server.Tests
                     new ButtonBinding(1, true, -1, false, false, new HidSequenceBinding("a", 0)),
                     new ButtonBinding(2, false, 0, true, true, new HidFunctionBinding("hid_consumer_volume_up"))
                 },
-                Array.Empty<EncoderBinding>());
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false);
 
             var expected = Lines(
                 "#pragma once",
@@ -26,6 +27,7 @@ namespace Keypad.Flasher.Server.Tests
                 string.Empty,
                 "#define CONFIGURATION_BUTTON_CAPACITY 2",
                 "#define CONFIGURATION_ENCODER_CAPACITY 0",
+                "#define CONFIGURATION_DEBUG_MODE 0",
                 string.Empty,
                 "#define PIN_NEO P34",
                 "#define NEO_COUNT 1",
@@ -45,11 +47,25 @@ namespace Keypad.Flasher.Server.Tests
                     new ButtonBinding(1, true, -1, false, false, new HidSequenceBinding("a", 0)),
                     new ButtonBinding(2, true, 4, false, false, new HidSequenceBinding("b", 0))
                 },
-                Array.Empty<EncoderBinding>());
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false);
 
             var result = Generator.GenerateHeader(configuration);
 
             Assert.That(result, Does.Contain("#define NEO_COUNT 5"));
+        }
+
+        [Test]
+        public void GenerateHeader_WithDebugMode_EmitsFlag()
+        {
+            var configuration = new ConfigurationDefinition(
+                Array.Empty<ButtonBinding>(),
+                Array.Empty<EncoderBinding>(),
+                DebugMode: true);
+
+            var result = Generator.GenerateHeader(configuration);
+
+            Assert.That(result, Does.Contain("#define CONFIGURATION_DEBUG_MODE 1"));
         }
 
         [Test]
@@ -73,7 +89,7 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>());
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false);
 
             var expected = ReadExpected("generate_source_2_buttons.c");
 
@@ -117,7 +133,7 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>());
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false);
 
             var expected = ReadExpected("generate_source_4_buttons.c");
 
@@ -127,31 +143,42 @@ namespace Keypad.Flasher.Server.Tests
         }
 
         [Test]
-        public void GenerateSource_WithSixButtonsAndEncoder_WritesExpectedConfiguration()
+        public void GenerateSource_WithTwoButtonModule_WritesExpectedConfiguration()
         {
             var buttons = new List<ButtonBinding>
             {
-                new ButtonBinding(1, true, 0, false, false, new HidSequenceBinding("1", 0)),
-                new ButtonBinding(2, true, 1, false, false, new HidSequenceBinding("2", 0)),
-                new ButtonBinding(3, true, 2, false, false, new HidSequenceBinding("3", 0)),
-                new ButtonBinding(4, false, 3, true, true, new HidFunctionBinding("hid_consumer_volume_down")),
-                new ButtonBinding(5, false, 4, false, true, new HidSequenceBinding("Tab", 1)),
-                new ButtonBinding(6, true, -1, true, false, new HidFunctionBinding("hid_consumer_volume_up"))
+                new ButtonBinding(32, true, 0, false, false, new HidSequenceBinding("1", 0)),
+                new ButtonBinding(14, true, 1, false, false, new HidSequenceBinding("2", 0))
             };
 
-            var encoder = new EncoderBinding(
-                PinA: 20,
-                PinB: 21,
-                Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
-                CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"));
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false);
 
-            var configuration = new ConfigurationDefinition(buttons, new List<EncoderBinding> { encoder });
-
-            var expected = ReadExpected("generate_source_6_buttons_1_encoder.c");
+            var expected = ReadExpected("generate_source_2_button_module.c");
 
             var result = Generator.GenerateSource(configuration);
 
             Assert.That(result, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void GenerateSource_WithDebugMode_WritesInactiveBindings()
+        {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(5, true, 0, false, false, new HidSequenceBinding("ab", 1))
+            };
+
+            var encoders = new List<EncoderBinding>
+            {
+                new EncoderBinding(10, 11, new HidFunctionBinding("hid_consumer_volume_up"), new HidFunctionBinding("hid_consumer_volume_down"))
+            };
+
+            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: true);
+
+            var result = Generator.GenerateSource(configuration);
+
+            Assert.That(result, Does.Contain(".type = HID_BINDING_NULL"));
+            Assert.That(result, Does.Contain(".function.functionPointer = 0"));
         }
 
         [Test]
@@ -171,7 +198,7 @@ namespace Keypad.Flasher.Server.Tests
                 new ButtonBinding(16, true, 9, false, false, new HidSequenceBinding("j", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>());
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false);
 
             var expected = ReadExpected("generate_source_10_buttons.c");
 
@@ -224,7 +251,7 @@ namespace Keypad.Flasher.Server.Tests
                     CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, encoders);
+            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: false);
 
             var expected = ReadExpected("generate_source_4_buttons_1_dial.c");
 

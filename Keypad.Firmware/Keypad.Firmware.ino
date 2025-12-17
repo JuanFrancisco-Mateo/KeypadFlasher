@@ -1,18 +1,22 @@
+#include "configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
 #ifndef USER_USB_RAM
 #error "Require USB RAM. Go Tools > USB Setting and pick the 2nd option in the dropdown list"
 #endif
-
-//lib include
-#include "configuration.h"
-#include "src/neo/neo.h"
-#include "src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h"
+#endif
 
 //app include
+#include "src/debug_mode.h"
+#if !CONFIGURATION_DEBUG_MODE
+#include "src/neo/neo.h"
+#include "src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h"
 #include "src/buttons.h"
 #include "src/encoder.h"
 #include "src/hid.h"
 #include "src/led.h"
 #include "src/util.h"
+#endif
 
 // ===================================================================================
 // Main section
@@ -20,7 +24,9 @@
 // Initialize pins
 void setup()
 {
-
+#if CONFIGURATION_DEBUG_MODE
+  debug_mode_setup();
+#else
   // Initialize neopixels
   NEO_init();
   delay(10);
@@ -42,13 +48,16 @@ void setup()
   encoder_setup();
   led_set_mode(LED_LOOP);
   USBInit();
+#endif
 }
 
 
 //Main loop, read buttons
 void loop()
 {
-
+#if CONFIGURATION_DEBUG_MODE
+  debug_mode_loop();
+#else
   //task update
   buttons_update();
   encoder_update();
@@ -57,4 +66,5 @@ void loop()
 
   // light idle to avoid saturating USB
   delay(1);
+#endif
 }

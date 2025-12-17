@@ -3,6 +3,9 @@
 #include "util.h"
 #include "buttons.h"
 #include "configuration_data.h"
+#include "../configuration.h"
+
+#if !CONFIGURATION_DEBUG_MODE
 
 static bool *button_state_s = NULL;
 static size_t button_state_capacity_s = 0;
@@ -81,3 +84,5 @@ void buttons_update(void)
         BOOT_now();
     }
 }
+
+#endif

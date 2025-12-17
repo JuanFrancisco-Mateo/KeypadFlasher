@@ -14,6 +14,7 @@ export default function CH55xBootloaderMinimal() {
   const [status, setStatus] = useState<string>("Idle");
   const [connectedInfo, setConnectedInfo] = useState<ConnectedInfo | null>(null);
   const [progress, setProgress] = useState<Progress>({ phase: "", current: 0, total: 0 });
+  const [debugFirmware, setDebugFirmware] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const clientRef = useRef<CH55xBootloader | null>(null);
@@ -80,8 +81,8 @@ export default function CH55xBootloaderMinimal() {
 
   const compileAndFlash = useCallback(async () => {
     try {
-      setStatus("Compiling…");
-      const resp = await fetch("flasher");
+      setStatus(debugFirmware ? "Compiling debug firmware…" : "Compiling…");
+      const resp = await fetch(`flasher${debugFirmware ? "?debug=1" : ""}`);
 
       let body: { error?: string; exitCode?: number; stdout?: string; stderr?: string; fileBytes?: string; } = {};
       const contentType = resp.headers.get("content-type") || "";
@@ -114,7 +115,7 @@ export default function CH55xBootloaderMinimal() {
     } catch (err) {
       setStatus(String((err as Error).message ?? err));
     }
-  }, [flashBytes]);
+  }, [flashBytes, debugFirmware]);
 
   const connectedLabel = useMemo(() => {
     if (!connectedInfo) return "Not connected";
@@ -146,6 +147,14 @@ export default function CH55xBootloaderMinimal() {
           <button onClick={compileAndFlash} className="px-4 py-2 rounded-2xl shadow bg-white hover:shadow-md border border-neutral-200">
             Compile & Flash
           </button>
+          <label className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-neutral-200 shadow-sm text-sm">
+            <input
+              type="checkbox"
+              checked={debugFirmware}
+              onChange={(event) => setDebugFirmware(event.target.checked)}
+            />
+            Debug firmware (USB CDC)
+          </label>
         </div>
 
         <div className="space-y-2">
