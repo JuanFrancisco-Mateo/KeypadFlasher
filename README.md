@@ -66,7 +66,7 @@ Please note that the CH55x bootloader on some devices has a quirk where it will 
 
 Now you can hopefully connect to the device in the app and flash the new firmware! If you cannot see any devices in the connection window, please ensure that the device is connected in bootloader mode and that you have the correct drivers installed (on Windows).
 
-At this time there is only very basic firmware that is designed for keypads with 1 dial and 3 buttons but this will be updated soon to handle different layouts and actually allow remapping of keys etc. The current firmware will just register the 3 buttons as Ctrl-C, Ctrl-V and Ctrl-Z and the dial as scroll up/down.
+At this time there is only very basic firmware that is designed for keypads with 1 knob and 3 buttons but this will be updated soon to handle different layouts and actually allow remapping of keys etc. The current firmware will just register the 3 buttons as Ctrl-C, Ctrl-V and Ctrl-Z and the knob as scroll up/down.
 
 Please note that the original firmware on the device will be lost when you flash this custom firmware, so only proceed if you are okay with that.
 

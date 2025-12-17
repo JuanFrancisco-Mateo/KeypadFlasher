@@ -3,9 +3,24 @@
 
 const button_binding_t button_bindings[] = {
     {
-        .pin = 11,
+        .pin = 33,
         .active_low = true,
-        .led_index = 0,
+        .led_index = -1,
+        .bootloader_on_boot = true,
+        .bootloader_chord_member = false,
+        .function = {
+            .type = HID_BINDING_SEQUENCE,
+            .function.sequence = {
+                .sequence = {'e', 'n', 't', 'e', 'r'},
+                .length = 5,
+                .delay = 5
+            }
+        }
+    },
+    {
+        .pin = 16,
+        .active_low = true,
+        .led_index = 2,
         .bootloader_on_boot = false,
         .bootloader_chord_member = true,
         .function = {
@@ -33,30 +48,15 @@ const button_binding_t button_bindings[] = {
         }
     },
     {
-        .pin = 16,
+        .pin = 11,
         .active_low = true,
-        .led_index = 2,
+        .led_index = 0,
         .bootloader_on_boot = false,
         .bootloader_chord_member = true,
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
                 .sequence = {'c'},
-                .length = 1,
-                .delay = 0
-            }
-        }
-    },
-    {
-        .pin = 33,
-        .active_low = true,
-        .led_index = -1,
-        .bootloader_on_boot = true,
-        .bootloader_chord_member = true,
-        .function = {
-            .type = HID_BINDING_SEQUENCE,
-            .function.sequence = {
-                .sequence = {'d'},
                 .length = 1,
                 .delay = 0
             }

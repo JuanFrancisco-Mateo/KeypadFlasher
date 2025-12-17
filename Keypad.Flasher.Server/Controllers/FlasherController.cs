@@ -131,80 +131,48 @@ namespace Keypad.Flasher.Server.Controllers
 
         internal static ConfigurationDefinition CreateDefaultConfiguration()
         {
-            var buttons = new List<ButtonBinding>{
-                new ButtonBinding(
-                    Pin: 32,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("0", 0)),
-                new ButtonBinding(
-                    Pin: 14,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("1", 0)),
-                new ButtonBinding(
-                    Pin: 15,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("2", 0)),
-                new ButtonBinding(
-                    Pin: 16,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("3", 0)),
-                new ButtonBinding(
-                    Pin: 17,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("4", 0)),
-                new ButtonBinding(
-                    Pin: 31,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("5", 0)),
-                new ButtonBinding(
-                    Pin: 30,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("6", 0)),
-                new ButtonBinding(
-                    Pin: 11,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("7", 0)),
+            var buttons = new List<ButtonBinding>
+            {
                 new ButtonBinding(
                     Pin: 33,
                     ActiveLow: true,
                     LedIndex: -1,
                     BootloaderOnBoot: true,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("8", 0)),
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("enter", 5)),
                 new ButtonBinding(
-                    Pin: 34,
+                    Pin: 16,
                     ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
+                    LedIndex: 2,
+                    BootloaderOnBoot: false,
                     BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("9", 0)),
+                    Function: new HidSequenceBinding("a", 0)),
+                new ButtonBinding(
+                    Pin: 17,
+                    ActiveLow: true,
+                    LedIndex: 1,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("b", 0)),
+                new ButtonBinding(
+                    Pin: 11,
+                    ActiveLow: true,
+                    LedIndex: 0,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: true,
+                    Function: new HidSequenceBinding("c", 0)),
             };
 
-            return new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1);
+            var encoders = new List<EncoderBinding>
+            {
+                new EncoderBinding(
+                    PinA: 31,
+                    PinB: 30,
+                    Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
+                    CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
+            };
+
+            return new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34);
         }
 
         private bool IsDebugRequested()
