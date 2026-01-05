@@ -74,7 +74,6 @@ Please note that the original firmware on the device will be lost when you flash
 
 The following is a list of tested and known compatible devices, but other devices using the CH55x series microcontrollers may also work.
 
-If you find and successfully test a new compatible device not in this list, please raise a PR to add it below for everyone else to use!
 
 They all have USB-C connectors unless otherwise noted:
 
@@ -97,6 +96,33 @@ These devices have been tested and found to use different types of microcontroll
 - [12 Keys 2 Knobs](https://www.aliexpress.com/item/1005007160113318.html?spm=a2g0o.order_detail.order_detail_item.3.5bd6f19cdqcQwn)
   - Uses a CH579M microcontroller
   - Can remap keys using https://github.com/kriomant/ch57x-keyboard-tool or other CH57x programming tools
+
+## Adding support for new keypads
+
+- Connect the keypad in bootloader mode with the web app. The status line shows a 4-byte bootloader ID (e.g. `Bootloader 2.31, ID: 126, 80, 44, 189`). Copy those four numbers.
+- Turn on **Debug firmware (USB CDC)** in the app and click **Compile & Flash**. Debug firmware works without a known config and exposes a USB serial port; it prints a banner, per-pin snapshots, and a 1s summary so you can see which pins change when you press buttons or rotate the encoder.
+- Open a serial terminal to the new USB CDC device (baud rate does not matter) and press buttons/rotate the knob. Notes from the log:
+  - Pins are labelled `P<port>.<bit>` (e.g. `P3.2` for pin `32`).
+  - `active_low` means the signal reads low when pressed; `active` shows whether the firmware considers the input asserted.
+  - Lines marked `configured` came from an existing config; unmarked lines help you find unused pins.
+- Add an entry keyed by the bootloader ID to [Keypad.Flasher.Client/src/lib/keypad-configs.ts](Keypad.Flasher.Client/src/lib/keypad-configs.ts). Provide a friendly `name`, fill `buttons` with pin numbers, `activeLow`, optional `ledIndex`, `bootloaderOnBoot`, and `bootloaderChordMember`, add any `encoders`, and set `neoPixelPin` (or `-1` if none). Example:
+
+```ts
+"126-80-44-189": {
+  name: "3 Keys 1 Knob",
+  config: {
+    buttons: [
+      { pin: 33, activeLow: true, ledIndex: -1, bootloaderOnBoot: true, bootloaderChordMember: false, function: { type: "Sequence", sequence: "enter", delay: 5 } },
+    ],
+    encoders: [
+      { pinA: 31, pinB: 30, clockwise: { type: "Function", functionPointer: "hid_consumer_volume_up" }, counterClockwise: { type: "Function", functionPointer: "hid_consumer_volume_down" } },
+    ],
+    neoPixelPin: 34,
+  },
+},
+```
+
+- Reflash without the debug checkbox to validate the mapping, then open a PR adding the new config so others can use it.
 
 ## Development
 

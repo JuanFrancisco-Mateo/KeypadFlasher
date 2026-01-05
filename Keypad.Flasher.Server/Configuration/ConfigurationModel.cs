@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Keypad.Flasher.Server.Configuration
 {
     public enum HidBindingType
@@ -6,7 +8,10 @@ namespace Keypad.Flasher.Server.Configuration
         Function
     }
 
-    public abstract record HidBinding(HidBindingType Type);
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+    [JsonDerivedType(typeof(HidSequenceBinding), "Sequence")]
+    [JsonDerivedType(typeof(HidFunctionBinding), "Function")]
+    public abstract record HidBinding([property: JsonIgnore] HidBindingType Type);
 
     public sealed record HidSequenceBinding(string Sequence, byte Delay)
         : HidBinding(HidBindingType.Sequence);

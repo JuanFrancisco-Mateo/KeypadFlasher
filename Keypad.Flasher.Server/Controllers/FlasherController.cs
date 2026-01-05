@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Text;
 using Keypad.Flasher.Server.Configuration;
@@ -21,9 +22,27 @@ namespace Keypad.Flasher.Server.Controllers
             _logger = logger;
         }
 
-        [HttpGet(Name = "GetFirmware")]
-        public ActionResult<Firmware> Get()
+        [HttpPost(Name = "GetFirmware")]
+        public ActionResult<Firmware> Post([FromBody] FirmwareRequest? request)
         {
+            if (request == null)
+            {
+                return BadRequest(new { error = "A configuration payload is required." });
+            }
+
+            if (!request.Debug && request.Configuration == null)
+            {
+                return BadRequest(new { error = "A configuration payload is required when debug is disabled." });
+            }
+
+            var configuration = request.Configuration ?? new ConfigurationDefinition(
+                Array.Empty<ButtonBinding>(),
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false,
+                NeoPixelPin: -1);
+
+            configuration = configuration with { DebugMode = request.Debug };
+
             var firmwarePath = Path.GetFullPath(_settings.FirmwarePath);
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             lock (_compileLock)
@@ -33,11 +52,6 @@ namespace Keypad.Flasher.Server.Controllers
                 CopyDirectory(firmwarePath, workingFirmwarePath);
                 var outputPath = Path.Combine(tempPath, "output");
 
-                var configuration = CreateDefaultConfiguration();
-                if (IsDebugRequested())
-                {
-                    configuration = configuration with { DebugMode = true };
-                }
                 var fqbn = configuration.DebugMode
                     ? "CH55xDuino:mcs51:ch552:usb_settings=usbcdc,clock=16internal"
                     : "CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal";
@@ -129,71 +143,7 @@ namespace Keypad.Flasher.Server.Controllers
 
         public record Firmware(byte[] FileBytes);
 
-        internal static ConfigurationDefinition CreateDefaultConfiguration()
-        {
-            var buttons = new List<ButtonBinding>
-            {
-                new ButtonBinding(
-                    Pin: 33,
-                    ActiveLow: true,
-                    LedIndex: -1,
-                    BootloaderOnBoot: true,
-                    BootloaderChordMember: false,
-                    Function: new HidSequenceBinding("enter", 5)),
-                new ButtonBinding(
-                    Pin: 16,
-                    ActiveLow: true,
-                    LedIndex: 2,
-                    BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("a", 0)),
-                new ButtonBinding(
-                    Pin: 17,
-                    ActiveLow: true,
-                    LedIndex: 1,
-                    BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("b", 0)),
-                new ButtonBinding(
-                    Pin: 11,
-                    ActiveLow: true,
-                    LedIndex: 0,
-                    BootloaderOnBoot: false,
-                    BootloaderChordMember: true,
-                    Function: new HidSequenceBinding("c", 0)),
-            };
-
-            var encoders = new List<EncoderBinding>
-            {
-                new EncoderBinding(
-                    PinA: 31,
-                    PinB: 30,
-                    Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
-                    CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
-            };
-
-            return new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34);
-        }
-
-        private bool IsDebugRequested()
-        {
-            if (!Request.Query.TryGetValue("debug", out var values))
-            {
-                return false;
-            }
-
-            foreach (var value in values)
-            {
-                if (string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        public record FirmwareRequest(ConfigurationDefinition? Configuration, bool Debug = false);
 
         private static void CopyDirectory(string sourceDir, string destinationDir)
         {
