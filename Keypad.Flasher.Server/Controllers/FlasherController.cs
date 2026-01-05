@@ -39,7 +39,8 @@ namespace Keypad.Flasher.Server.Controllers
                 Array.Empty<ButtonBinding>(),
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
-                NeoPixelPin: -1);
+                NeoPixelPin: -1,
+                NeoPixelReversed: false);
 
             configuration = configuration with { DebugMode = request.Debug };
 

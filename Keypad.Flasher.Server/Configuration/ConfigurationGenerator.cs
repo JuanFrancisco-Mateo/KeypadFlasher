@@ -7,6 +7,7 @@ namespace Keypad.Flasher.Server.Configuration
         public string GenerateHeader(ConfigurationDefinition configuration)
         {
             var neoPixelCount = CalculateNeoPixelCount(configuration.Buttons);
+            var neoPixelReversed = neoPixelCount > 0 && configuration.NeoPixelReversed;
             var sb = new StringBuilder();
             sb.AppendLine("// This file is auto-generated. Do not edit manually.");
             sb.AppendLine();
@@ -29,10 +30,12 @@ namespace Keypad.Flasher.Server.Configuration
                 sb.AppendLine($"#define PIN_NEO {neoPixelPinMacro}");
                 sb.AppendLine($"#define NEO_COUNT {neoPixelCount}");
                 sb.AppendLine("#define NEO_GRB");
+                sb.AppendLine($"#define NEO_REVERSED {ToCInteger(neoPixelReversed)}");
             }
             else
             {
                 sb.AppendLine("#define NEO_COUNT 0");
+                sb.AppendLine("#define NEO_REVERSED 0");
             }
             return sb.ToString();
         }

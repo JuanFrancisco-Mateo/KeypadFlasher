@@ -22,6 +22,7 @@ export type ConfigurationDto = {
   buttons: ButtonBindingDto[];
   encoders: EncoderBindingDto[];
   neoPixelPin: number;
+  neoPixelReversed: boolean;
 };
 
 export type KnownDeviceConfig = { name: string; config: ConfigurationDto };
@@ -39,6 +40,7 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
       ],
       encoders: [],
       neoPixelPin: -1,
+      neoPixelReversed: false,
     },
   },
   "126-80-44-189": {
@@ -54,6 +56,7 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
         { pinA: 31, pinB: 30, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down") },
       ],
       neoPixelPin: 34,
+      neoPixelReversed: false,
     },
   },
   "49-174-205-190": {
@@ -67,6 +70,7 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
       ],
       encoders: [],
       neoPixelPin: 34,
+      neoPixelReversed: true,
     },
   },
   "144-165-233-190": {
@@ -85,6 +89,7 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
         { pinA: 31, pinB: 30, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down") },
       ],
       neoPixelPin: 34,
+      neoPixelReversed: true,
     },
   },
   "24-26-109-190": {
@@ -104,6 +109,7 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
       ],
       encoders: [],
       neoPixelPin: -1,
+      neoPixelReversed: false,
     },
   },  
 };

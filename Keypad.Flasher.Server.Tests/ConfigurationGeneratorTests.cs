@@ -31,7 +31,8 @@ namespace Keypad.Flasher.Server.Tests
                 },
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
-                NeoPixelPin: 34);
+                NeoPixelPin: 34,
+                NeoPixelReversed: false);
 
             var expected = Lines(
                 "// This file is auto-generated. Do not edit manually.",
@@ -46,7 +47,8 @@ namespace Keypad.Flasher.Server.Tests
                 string.Empty,
                 "#define PIN_NEO P34",
                 "#define NEO_COUNT 1",
-                "#define NEO_GRB");
+                "#define NEO_GRB",
+                "#define NEO_REVERSED 0");
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -76,7 +78,8 @@ namespace Keypad.Flasher.Server.Tests
                 },
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
-                NeoPixelPin: 34);
+                NeoPixelPin: 34,
+                NeoPixelReversed: false);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -99,11 +102,36 @@ namespace Keypad.Flasher.Server.Tests
                 },
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
-                NeoPixelPin: 31);
+                NeoPixelPin: 31,
+                NeoPixelReversed: false);
 
             var result = Generator.GenerateHeader(configuration);
 
             Assert.That(result, Does.Contain("#define PIN_NEO P31"));
+        }
+
+        [Test]
+        public void GenerateHeader_WithReversedNeoPixels_EmitsFlag()
+        {
+            var configuration = new ConfigurationDefinition(
+                new List<ButtonBinding>
+                {
+                    new ButtonBinding(
+                        Pin: 1,
+                        ActiveLow: true,
+                        LedIndex: 0,
+                        BootloaderOnBoot: false,
+                        BootloaderChordMember: false,
+                        Function: new HidSequenceBinding("a", 0))
+                },
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false,
+                NeoPixelPin: 31,
+                NeoPixelReversed: true);
+
+            var result = Generator.GenerateHeader(configuration);
+
+            Assert.That(result, Does.Contain("#define NEO_REVERSED 1"));
         }
 
         [Test]
@@ -122,13 +150,15 @@ namespace Keypad.Flasher.Server.Tests
                 },
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
-                NeoPixelPin: 34);
+                NeoPixelPin: 34,
+                NeoPixelReversed: false);
 
             var result = Generator.GenerateHeader(configuration);
 
             Assert.That(result, Does.Contain("#define NEO_COUNT 0"));
             Assert.That(result, Does.Not.Contain("#define PIN_NEO"));
             Assert.That(result, Does.Not.Contain("#define NEO_GRB"));
+            Assert.That(result, Does.Contain("#define NEO_REVERSED 0"));
         }
 
         [Test]
@@ -138,7 +168,8 @@ namespace Keypad.Flasher.Server.Tests
                 Array.Empty<ButtonBinding>(),
                 Array.Empty<EncoderBinding>(),
                 DebugMode: true,
-                NeoPixelPin: 34);
+                NeoPixelPin: 34,
+                NeoPixelReversed: false);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -164,7 +195,7 @@ namespace Keypad.Flasher.Server.Tests
                 new EncoderBinding(10, 11, new HidFunctionBinding("hid_consumer_volume_up"), new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: true, NeoPixelPin: 34);
+            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: true, NeoPixelPin: 34, NeoPixelReversed: false);
 
             var result = Generator.GenerateSource(configuration);
 
@@ -207,7 +238,7 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("4", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: 34);
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: 34, NeoPixelReversed: false);
 
             var expected = ReadExpected("generate_source_4_buttons.c");
 
@@ -237,7 +268,7 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("2", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1);
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1, NeoPixelReversed: false);
 
             var expected = ReadExpected("generate_source_2_buttons.c");
 
@@ -323,7 +354,7 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("9", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1);
+            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1, NeoPixelReversed: false);
 
             var expected = ReadExpected("generate_source_10_buttons.c");
 
@@ -376,7 +407,7 @@ namespace Keypad.Flasher.Server.Tests
                     CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34);
+            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34, NeoPixelReversed: false);
 
             var expected = ReadExpected("generate_source_3_buttons_1_encoder.c");
 

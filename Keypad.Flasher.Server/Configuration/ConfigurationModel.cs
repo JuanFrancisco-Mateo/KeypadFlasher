@@ -37,5 +37,6 @@ namespace Keypad.Flasher.Server.Configuration
         IReadOnlyList<ButtonBinding> Buttons,
         IReadOnlyList<EncoderBinding> Encoders,
         bool DebugMode,
-        int NeoPixelPin);
+        int NeoPixelPin,
+        bool NeoPixelReversed);
 }

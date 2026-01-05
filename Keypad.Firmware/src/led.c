@@ -3,6 +3,9 @@
 #include "led.h"
 
 #if !CONFIGURATION_DEBUG_MODE && NEO_COUNT > 0
+#ifndef NEO_REVERSED
+#define NEO_REVERSED 0
+#endif
 #include "neo/neo.h"
 
 static enum led_keyboard_mode_t led_mode_s = LED_LOOP;
@@ -10,6 +13,12 @@ static int color_hue_s[NEO_COUNT] = {0}; // hue value: 0..191 color map
 static int current_led_s = -1;           // current lit led index
 static const uint8_t LED_LOOP_STEP_INTERVAL_MS = 20;
 static uint32_t last_loop_step_ms_s = 0;
+
+static uint8_t led_physical_index(uint8_t logical)
+{
+  // Map logical LED ordering to physical wiring when reversed.
+  return NEO_REVERSED ? (uint8_t)(NEO_COUNT - 1 - logical) : logical;
+}
 
 void led_set_color_hue(uint8_t led0, uint8_t led1, uint8_t led2)
 {
@@ -24,7 +33,8 @@ void led_show_bootloader_indicator(void)
 {
   for (uint8_t i = 0; i < NEO_COUNT; ++i)
   {
-    NEO_writeHue(i, NEO_BLUE, NEO_BRIGHT_KEYS);
+    const uint8_t physical = led_physical_index(i);
+    NEO_writeHue(physical, NEO_BLUE, NEO_BRIGHT_KEYS);
   }
   current_led_s = -1;
   NEO_update();
@@ -79,13 +89,14 @@ void led_update()
   }
   for (uint8_t led = 0; led < NEO_COUNT; ++led)
   {
+    const uint8_t physical = led_physical_index(led);
     if (current_led_s == (int)led)
     {
-      NEO_writeColor(led, 255, 255, 255);
+      NEO_writeColor(physical, 255, 255, 255);
     }
     else
     {
-      NEO_writeHue(led, color_hue_s[led], NEO_BRIGHT_KEYS);
+      NEO_writeHue(physical, color_hue_s[led], NEO_BRIGHT_KEYS);
     }
   }
 
