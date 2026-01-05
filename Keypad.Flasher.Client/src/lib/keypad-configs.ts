@@ -77,13 +77,13 @@ export const DEVICE_CONFIGS: Record<string, KnownDeviceConfig> = {
     name: "6 Keys 1 Knob",
     config: {
       buttons: [
-        { pin: 33, activeLow: true, ledIndex: -1, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("Enter", 0) },
-        { pin: 32, activeLow: true, ledIndex: 0, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("1", 0) },
-        { pin: 14, activeLow: true, ledIndex: 1, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("2", 0) },
-        { pin: 15, activeLow: true, ledIndex: 2, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("3", 0) },
-        { pin: 16, activeLow: true, ledIndex: 3, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("4", 0) },
-        { pin: 17, activeLow: true, ledIndex: 4, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("5", 0) },
-        { pin: 11, activeLow: true, ledIndex: 5, bootloaderOnBoot: false, bootloaderChordMember: false, function: seq("6", 0) },
+        { pin: 33, activeLow: true, ledIndex: -1, bootloaderOnBoot: true, bootloaderChordMember: false, function: seq("Enter", 0) },
+        { pin: 32, activeLow: true, ledIndex: 0, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("1", 0) },
+        { pin: 14, activeLow: true, ledIndex: 1, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("2", 0) },
+        { pin: 15, activeLow: true, ledIndex: 2, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("3", 0) },
+        { pin: 16, activeLow: true, ledIndex: 3, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("4", 0) },
+        { pin: 17, activeLow: true, ledIndex: 4, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("5", 0) },
+        { pin: 11, activeLow: true, ledIndex: 5, bootloaderOnBoot: false, bootloaderChordMember: true, function: seq("6", 0) },
       ],
       encoders: [
         { pinA: 31, pinB: 30, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down") },
