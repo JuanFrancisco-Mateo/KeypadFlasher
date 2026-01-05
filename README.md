@@ -99,7 +99,7 @@ These devices have been tested and found to use different types of microcontroll
 
 ## Adding support for new keypads
 
-- Connect the keypad in bootloader mode with the web app. The status line shows a 4-byte bootloader ID (e.g. `Bootloader 2.31, ID: 126, 80, 44, 189`). Copy those four numbers.
+- Connect the keypad in bootloader mode with the web app. Turn on Development mode to see the bootloader ID in the detected device card (e.g. `Bootloader 2.31 · ID 126, 80, 44, 189`). Copy those four numbers.
 - Turn on **Debug firmware (USB CDC)** in the app and click **Compile & Flash**. Debug firmware works without a known config and exposes a USB serial port; it prints a banner, per-pin snapshots, and a 1s summary so you can see which pins change when you press buttons or rotate the encoder.
 - Open a serial terminal to the new USB CDC device (baud rate does not matter) and press buttons/rotate the knob. Notes from the log:
   - Pins are labelled `P<port>.<bit>` (e.g. `P3.2` for pin `32`).
