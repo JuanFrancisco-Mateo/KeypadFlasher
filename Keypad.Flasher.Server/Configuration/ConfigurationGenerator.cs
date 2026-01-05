@@ -8,6 +8,8 @@ namespace Keypad.Flasher.Server.Configuration
         {
             var neoPixelCount = CalculateNeoPixelCount(configuration.Buttons);
             var sb = new StringBuilder();
+            sb.AppendLine("// This file is auto-generated. Do not edit manually.");
+            sb.AppendLine();
             sb.AppendLine("#pragma once");
             sb.AppendLine();
             sb.AppendLine("#include \"src/configuration_data.h\"");

@@ -1,5 +1,6 @@
 General:
 - You can only delete files by running shell commands, the patch tool does not work for this
+  - TODO: Remove when fixed: https://github.com/microsoft/vscode/issues/275705
 
 Keypad.Firmware:
 - This is an Arduino project running on a microcontroller

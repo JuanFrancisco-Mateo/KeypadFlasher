@@ -34,6 +34,8 @@ namespace Keypad.Flasher.Server.Tests
                 NeoPixelPin: 34);
 
             var expected = Lines(
+                "// This file is auto-generated. Do not edit manually.",
+                string.Empty,
                 "#pragma once",
                 string.Empty,
                 "#include \"src/configuration_data.h\"",
