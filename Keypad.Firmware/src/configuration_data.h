@@ -6,6 +6,38 @@
 
 #include "hid.h"
 
+// Simple RGB container for LED config
+typedef struct
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} led_rgb_t;
+
+typedef enum
+{
+    LED_PASSIVE_OFF = 0,
+    LED_PASSIVE_RAINBOW = 1,
+    LED_PASSIVE_STATIC = 2
+} led_passive_mode_t;
+
+typedef enum
+{
+    LED_ACTIVE_OFF = 0,
+    LED_ACTIVE_SOLID = 1
+} led_active_mode_t;
+
+typedef struct
+{
+    led_passive_mode_t passive_mode;
+    const led_rgb_t *passive_colors;
+    const led_active_mode_t *active_modes;
+    const led_rgb_t *active_colors;
+    uint8_t count;
+} led_configuration_t;
+
+extern const led_configuration_t led_configuration;
+
 typedef struct
 {
     uint8_t pin;

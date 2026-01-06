@@ -43,6 +43,7 @@ namespace Keypad.Flasher.Server.Configuration
         public string GenerateSource(ConfigurationDefinition configuration)
         {
             var sb = new StringBuilder();
+            var neoPixelCount = CalculateNeoPixelCount(configuration.Buttons);
             sb.AppendLine("#include \"configuration.h\"");
             sb.AppendLine("#include \"src/userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h\"");
             sb.AppendLine();
@@ -53,6 +54,8 @@ namespace Keypad.Flasher.Server.Configuration
             AppendEncoderBindings(sb, configuration.Encoders, configuration.DebugMode);
             sb.AppendLine();
             AppendEncoderCount(sb, configuration.Encoders);
+            sb.AppendLine();
+            AppendLedConfiguration(sb, configuration, neoPixelCount);
             return sb.ToString();
         }
 
@@ -114,6 +117,55 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine("const size_t encoder_binding_count = sizeof(encoder_bindings) / sizeof(encoder_bindings[0]);");
         }
 
+        private static void AppendLedConfiguration(StringBuilder sb, ConfigurationDefinition configuration, int neoPixelCount)
+        {
+            if (neoPixelCount <= 0)
+            {
+                sb.AppendLine("const led_configuration_t led_configuration = {");
+                AppendLine(sb, 1, ".passive_mode = LED_PASSIVE_OFF,");
+                AppendLine(sb, 1, ".passive_colors = 0,");
+                AppendLine(sb, 1, ".active_modes = 0,");
+                AppendLine(sb, 1, ".active_colors = 0,");
+                AppendLine(sb, 1, ".count = 0");
+                AppendLine(sb, 0, "};");
+                return;
+            }
+
+            var led = configuration.LedConfig ?? throw new InvalidOperationException("LED configuration missing.");
+
+            AppendLine(sb, 0, "static const led_rgb_t led_passive_colors[] = {");
+            for (int i = 0; i < neoPixelCount; i++)
+            {
+                var color = led.PassiveColors[i];
+                var tail = i == neoPixelCount - 1 ? string.Empty : ",";
+                AppendLine(sb, 1, $"{{ .r = {color.R}, .g = {color.G}, .b = {color.B} }}{tail}");
+            }
+            AppendLine(sb, 0, "};");
+            AppendLine(sb, 0, "static const led_active_mode_t led_active_modes[] = {");
+            for (int i = 0; i < neoPixelCount; i++)
+            {
+                var modeLiteral = ToActiveModeLiteral(led.ActiveModes[i]);
+                var tail = i == neoPixelCount - 1 ? string.Empty : ",";
+                AppendLine(sb, 1, modeLiteral + tail);
+            }
+            AppendLine(sb, 0, "};");
+            AppendLine(sb, 0, "static const led_rgb_t led_active_colors[] = {");
+            for (int i = 0; i < neoPixelCount; i++)
+            {
+                var color = led.ActiveColors[i];
+                var tail = i == neoPixelCount - 1 ? string.Empty : ",";
+                AppendLine(sb, 1, $"{{ .r = {color.R}, .g = {color.G}, .b = {color.B} }}{tail}");
+            }
+            AppendLine(sb, 0, "};");
+            sb.AppendLine("const led_configuration_t led_configuration = {");
+            AppendLine(sb, 1, $".passive_mode = {ToPassiveModeLiteral(led.PassiveMode)},");
+            AppendLine(sb, 1, ".passive_colors = led_passive_colors,");
+            AppendLine(sb, 1, ".active_modes = led_active_modes,");
+            AppendLine(sb, 1, ".active_colors = led_active_colors,");
+            AppendLine(sb, 1, $".count = {neoPixelCount}");
+            AppendLine(sb, 0, "};");
+        }
+
         private static int CalculateNeoPixelCount(IReadOnlyCollection<ButtonBinding> buttons)
         {
             var maxLedIndex = -1;
@@ -128,6 +180,21 @@ namespace Keypad.Flasher.Server.Configuration
             var count = maxLedIndex + 1;
             return count < 0 ? 0 : count;
         }
+
+        private static string ToPassiveModeLiteral(PassiveLedMode mode) => mode switch
+        {
+            PassiveLedMode.Off => "LED_PASSIVE_OFF",
+            PassiveLedMode.Rainbow => "LED_PASSIVE_RAINBOW",
+            PassiveLedMode.Static => "LED_PASSIVE_STATIC",
+            _ => "LED_PASSIVE_RAINBOW"
+        };
+
+        private static string ToActiveModeLiteral(ActiveLedMode mode) => mode switch
+        {
+            ActiveLedMode.Off => "LED_ACTIVE_OFF",
+            ActiveLedMode.Solid => "LED_ACTIVE_SOLID",
+            _ => "LED_ACTIVE_SOLID"
+        };
 
         private static void AppendButton(StringBuilder sb, ButtonBinding button, bool isLast, bool debugMode)
         {
@@ -176,55 +243,63 @@ namespace Keypad.Flasher.Server.Configuration
             AppendLine(sb, indentLevel, ".type = HID_BINDING_SEQUENCE,");
             AppendLine(sb, indentLevel, ".function.sequence = {");
             AppendLine(sb, indentLevel + 1, ".steps = {");
-            for (int i = 0; i < sequenceBinding.Steps.Count; i++)
+            if (sequenceBinding.Steps.Count == 0)
             {
-                var step = sequenceBinding.Steps[i];
-                var isLast = i == sequenceBinding.Steps.Count - 1;
-                var kindLiteral = step.Kind switch
+                // SDCC balks at an empty initializer list; seed with a zeroed element
+                AppendLine(sb, indentLevel + 2, "{0}");
+            }
+            else
+            {
+                for (int i = 0; i < sequenceBinding.Steps.Count; i++)
                 {
-                    HidStepKind.Key => "HID_STEP_KEY",
-                    HidStepKind.Pause => "HID_STEP_PAUSE",
-                    HidStepKind.Function => "HID_STEP_FUNCTION",
-                    HidStepKind.Mouse => "HID_STEP_MOUSE",
-                    _ => throw new InvalidOperationException($"Unsupported step kind: {step.Kind}")
-                };
-                var functionPointer = step.Kind == HidStepKind.Function
-                    ? step.FunctionPointer ?? throw new InvalidOperationException("Function steps must specify a functionPointer.")
-                    : "0";
-                var keycodeLiteral = step.Kind == HidStepKind.Key
-                    ? ToCharLiteral((char)step.Keycode)
-                    : step.Keycode.ToString();
-                var pointerType = step.Kind == HidStepKind.Mouse ? step.PointerType : HidPointerType.MoveUp;
-                var pointerTypeLiteral = ((byte)pointerType).ToString();
-                var pointerValue = (byte)0;
-                if (step.Kind == HidStepKind.Mouse)
-                {
-                    if (pointerType is HidPointerType.LeftClick or HidPointerType.RightClick)
+                    var step = sequenceBinding.Steps[i];
+                    var isLast = i == sequenceBinding.Steps.Count - 1;
+                    var kindLiteral = step.Kind switch
                     {
-                        pointerValue = 0;
-                    }
-                    else if (pointerType is HidPointerType.ScrollUp or HidPointerType.ScrollDown)
+                        HidStepKind.Key => "HID_STEP_KEY",
+                        HidStepKind.Pause => "HID_STEP_PAUSE",
+                        HidStepKind.Function => "HID_STEP_FUNCTION",
+                        HidStepKind.Mouse => "HID_STEP_MOUSE",
+                        _ => throw new InvalidOperationException($"Unsupported step kind: {step.Kind}")
+                    };
+                    var functionPointer = step.Kind == HidStepKind.Function
+                        ? step.FunctionPointer ?? throw new InvalidOperationException("Function steps must specify a functionPointer.")
+                        : "0";
+                    var keycodeLiteral = step.Kind == HidStepKind.Key
+                        ? ToCharLiteral((char)step.Keycode)
+                        : step.Keycode.ToString();
+                    var pointerType = step.Kind == HidStepKind.Mouse ? step.PointerType : HidPointerType.MoveUp;
+                    var pointerTypeLiteral = ((byte)pointerType).ToString();
+                    var pointerValue = (byte)0;
+                    if (step.Kind == HidStepKind.Mouse)
                     {
-                        pointerValue = step.PointerValue == 0 ? (byte)1 : step.PointerValue;
+                        if (pointerType is HidPointerType.LeftClick or HidPointerType.RightClick)
+                        {
+                            pointerValue = 0;
+                        }
+                        else if (pointerType is HidPointerType.ScrollUp or HidPointerType.ScrollDown)
+                        {
+                            pointerValue = step.PointerValue == 0 ? (byte)1 : step.PointerValue;
+                        }
+                        else
+                        {
+                            pointerValue = step.PointerValue == 0 ? (byte)100 : step.PointerValue;
+                        }
                     }
-                    else
-                    {
-                        pointerValue = step.PointerValue == 0 ? (byte)100 : step.PointerValue;
-                    }
-                }
-                var functionValue = step.Kind == HidStepKind.Function ? (step.FunctionValue == 0 ? (byte)1 : step.FunctionValue) : (byte)1;
+                    var functionValue = step.Kind == HidStepKind.Function ? (step.FunctionValue == 0 ? (byte)1 : step.FunctionValue) : (byte)1;
 
-                AppendLine(sb, indentLevel + 2, "{");
-                AppendLine(sb, indentLevel + 3, $".kind = {kindLiteral},");
-                AppendLine(sb, indentLevel + 3, $".keycode = {keycodeLiteral},");
-                AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
-                AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
-                AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs},");
-                AppendLine(sb, indentLevel + 3, $".function_value = {functionValue},");
-                AppendLine(sb, indentLevel + 3, $".pointer_type = {pointerTypeLiteral},");
-                AppendLine(sb, indentLevel + 3, $".pointer_value = {pointerValue},");
-                AppendLine(sb, indentLevel + 3, $".functionPointer = {functionPointer}");
-                AppendLine(sb, indentLevel + 2, isLast ? "}" : "},");
+                    AppendLine(sb, indentLevel + 2, "{");
+                    AppendLine(sb, indentLevel + 3, $".kind = {kindLiteral},");
+                    AppendLine(sb, indentLevel + 3, $".keycode = {keycodeLiteral},");
+                    AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
+                    AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
+                    AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs},");
+                    AppendLine(sb, indentLevel + 3, $".function_value = {functionValue},");
+                    AppendLine(sb, indentLevel + 3, $".pointer_type = {pointerTypeLiteral},");
+                    AppendLine(sb, indentLevel + 3, $".pointer_value = {pointerValue},");
+                    AppendLine(sb, indentLevel + 3, $".functionPointer = {functionPointer}");
+                    AppendLine(sb, indentLevel + 2, isLast ? "}" : "},");
+                }
             }
             AppendLine(sb, indentLevel + 1, "},");
             AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Steps.Count}");

@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 // Key colors (hue value: 0..191)
 #define NEO_RED 0    // red
 #define NEO_YEL 32   // yellow
@@ -28,6 +29,6 @@ void led_show_bootloader_indicator(void);
 // update led task
 void led_update();
 
-//if in loop mode, change color to pressed key
-void led_presskey(int key);
+// Update pressed state for a logical LED index
+void led_set_key_state(int key, bool pressed);
 

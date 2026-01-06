@@ -88,8 +88,28 @@ namespace Keypad.Flasher.Server.Services
 
                         if (process.ExitCode != 0)
                         {
-                            _logger.LogError("arduino-cli compile failed. ExitCode: {ExitCode}\nStdOut:\n{StdOut}\nStdErr:\n{StdErr}", process.ExitCode, stdout.ToString(), stderr.ToString());
-                            return new FirmwareBuildResult(false, null, "Compile failed", process.ExitCode, stdout.ToString(), stderr.ToString());
+                            var stderrWithConfig = new StringBuilder(stderr.ToString());
+                            try
+                            {
+                                if (File.Exists(sourcePath))
+                                {
+                                    stderrWithConfig.AppendLine("\n--- configuration.c (generated) ---\n");
+                                    stderrWithConfig.AppendLine(File.ReadAllText(sourcePath));
+                                }
+                                if (File.Exists(headerPath))
+                                {
+                                    stderrWithConfig.AppendLine("\n--- configuration.h (generated) ---\n");
+                                    stderrWithConfig.AppendLine(File.ReadAllText(headerPath));
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                stderrWithConfig.AppendLine($"\n--- config capture failed: {ex.Message} ---\n");
+                            }
+
+                            var stderrCombined = stderrWithConfig.ToString();
+                            _logger.LogError("arduino-cli compile failed. ExitCode: {ExitCode}\nStdOut:\n{StdOut}\nStdErr:\n{StdErr}", process.ExitCode, stdout.ToString(), stderrCombined);
+                            return new FirmwareBuildResult(false, null, "Compile failed", process.ExitCode, stdout.ToString(), stderrCombined);
                         }
 
                         _logger.LogInformation("arduino-cli compile succeeded. ExitCode: {ExitCode}\nStdOut:\n{StdOut}", process.ExitCode, stdout.ToString());

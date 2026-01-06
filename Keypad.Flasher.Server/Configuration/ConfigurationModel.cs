@@ -30,6 +30,21 @@ namespace Keypad.Flasher.Server.Configuration
         ScrollDown = 7
     }
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum PassiveLedMode
+    {
+        Off,
+        Rainbow,
+        Static
+    }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ActiveLedMode
+    {
+        Off,
+        Solid
+    }
+
     public sealed record HidStep(
         HidStepKind Kind,
         byte Keycode,
@@ -100,12 +115,21 @@ namespace Keypad.Flasher.Server.Configuration
         HidBinding CounterClockwise,
         HidBinding? Press);
 
+    public sealed record LedColor(byte R, byte G, byte B);
+
+    public sealed record LedConfiguration(
+        PassiveLedMode PassiveMode,
+        IReadOnlyList<LedColor> PassiveColors,
+        IReadOnlyList<ActiveLedMode> ActiveModes,
+        IReadOnlyList<LedColor> ActiveColors);
+
     public sealed record ConfigurationDefinition(
         IReadOnlyList<ButtonBinding> Buttons,
         IReadOnlyList<EncoderBinding> Encoders,
         bool DebugMode,
         int NeoPixelPin,
-        bool NeoPixelReversed);
+        bool NeoPixelReversed,
+        LedConfiguration LedConfig);
 
     // Hardware-only shape; no bindings attached so UI can present physical controls separately from actions
     public abstract record InputLayout(

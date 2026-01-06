@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <stdbool.h>
 #include "../configuration.h"
 #include "led.h"
 
@@ -8,11 +9,16 @@
 #endif
 #include "neo/neo.h"
 
-static enum led_keyboard_mode_t led_mode_s = LED_LOOP;
-static int color_hue_s[NEO_COUNT] = {0}; // hue value: 0..191 color map
-static int current_led_s = -1;           // current lit led index
+static const led_configuration_t *led_cfg_s = &led_configuration;
+static uint8_t color_hue_s[NEO_COUNT] = {0}; // hue value: 0..191 color map
+static bool pressed_s[NEO_COUNT] = {0};      // pressed state per logical LED
 static const uint8_t LED_LOOP_STEP_INTERVAL_MS = 20;
 static uint32_t last_loop_step_ms_s = 0;
+
+static uint8_t led_count(void)
+{
+  return led_cfg_s->count;
+}
 
 static uint8_t led_physical_index(uint8_t logical)
 {
@@ -23,7 +29,8 @@ static uint8_t led_physical_index(uint8_t logical)
 void led_set_color_hue(uint8_t led0, uint8_t led1, uint8_t led2)
 {
   const uint8_t hues[3] = {led0, led1, led2};
-  for (uint8_t i = 0; i < NEO_COUNT; ++i)
+  const uint8_t count = led_count();
+  for (uint8_t i = 0; i < count; ++i)
   {
     color_hue_s[i] = hues[i % 3];
   }
@@ -31,47 +38,41 @@ void led_set_color_hue(uint8_t led0, uint8_t led1, uint8_t led2)
 
 void led_show_bootloader_indicator(void)
 {
-  for (uint8_t i = 0; i < NEO_COUNT; ++i)
+  const uint8_t count = led_count();
+  for (uint8_t i = 0; i < count; ++i)
   {
     const uint8_t physical = led_physical_index(i);
     NEO_writeHue(physical, NEO_BLUE, NEO_BRIGHT_KEYS);
   }
-  current_led_s = -1;
   NEO_update();
 }
 
 void led_set_mode(enum led_keyboard_mode_t mode)
 {
-  led_mode_s = mode;
-  switch (mode)
+  (void)mode; // mode is kept for backward compatibility; config drives behavior.
+  const uint8_t hues[3] = {NEO_RED, NEO_YEL, NEO_GREEN};
+  const uint8_t count = led_count();
+  for (uint8_t i = 0; i < count; ++i)
   {
-  case LED_LOOP:
-    {
-      const uint8_t hues[3] = {NEO_RED, NEO_YEL, NEO_GREEN};
-      for (uint8_t i = 0; i < NEO_COUNT; ++i)
-      {
-        color_hue_s[i] = hues[i % 3];
-      }
-    }
-    last_loop_step_ms_s = millis();
-    break;
+    color_hue_s[i] = hues[i % 3];
+    pressed_s[i] = false;
   }
+  last_loop_step_ms_s = millis();
 }
 
-// if in loop mode, change color to pressed key
-void led_presskey(int key)
+void led_set_key_state(int key, bool pressed)
 {
-  if (key < 0 || key >= NEO_COUNT)
+  const uint8_t count = led_count();
+  if (key < 0 || key >= (int)count)
   {
-    current_led_s = -1;
     return;
   }
-  current_led_s = key;
+  pressed_s[key] = pressed;
 }
 
 void led_update()
 {
-  if (led_mode_s == LED_LOOP)
+  if (led_cfg_s->passive_mode == LED_PASSIVE_RAINBOW)
   {
     const uint32_t now = millis();
     if ((uint32_t)(now - last_loop_step_ms_s) >= LED_LOOP_STEP_INTERVAL_MS)
@@ -87,16 +88,42 @@ void led_update()
       }
     }
   }
-  for (uint8_t led = 0; led < NEO_COUNT; ++led)
+
+  const uint8_t count = led_count();
+  for (uint8_t led = 0; led < count; ++led)
   {
     const uint8_t physical = led_physical_index(led);
-    if (current_led_s == (int)led)
+    if (pressed_s[led])
     {
-      NEO_writeColor(physical, 255, 255, 255);
+      const led_active_mode_t mode = led_cfg_s->active_modes[led];
+      if (mode == LED_ACTIVE_SOLID)
+      {
+        const led_rgb_t *color = &led_cfg_s->active_colors[led];
+        NEO_writeColor(physical, color->r, color->g, color->b);
+        continue;
+      }
+      if (mode == LED_ACTIVE_OFF)
+      {
+        NEO_writeColor(physical, 0, 0, 0);
+        continue;
+      }
     }
-    else
+
+    switch (led_cfg_s->passive_mode)
     {
+    case LED_PASSIVE_OFF:
+      NEO_writeColor(physical, 0, 0, 0);
+      break;
+    case LED_PASSIVE_STATIC:
+      {
+        const led_rgb_t *color = &led_cfg_s->passive_colors[led];
+        NEO_writeColor(physical, color->r, color->g, color->b);
+      }
+      break;
+    case LED_PASSIVE_RAINBOW:
+    default:
       NEO_writeHue(physical, color_hue_s[led], NEO_BRIGHT_KEYS);
+      break;
     }
   }
 

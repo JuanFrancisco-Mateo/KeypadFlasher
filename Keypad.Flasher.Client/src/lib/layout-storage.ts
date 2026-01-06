@@ -1,10 +1,11 @@
 import type { BindingProfileDto, DeviceLayoutDto } from "./keypad-configs";
+import type { LedConfigurationDto } from "../types";
 
 const STORAGE_PREFIX = "keypad-flasher";
 const LAST_DEVICE_KEY = `${STORAGE_PREFIX}:last-device`;
 const storageAvailable = typeof window !== "undefined" && !!window.localStorage;
 
-export type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null };
+export type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null; ledConfig: LedConfigurationDto | null };
 
 export const cloneLayout = (layout: DeviceLayoutDto): DeviceLayoutDto => ({
   ...layout,
@@ -23,6 +24,7 @@ export const loadStoredConfig = (bootloaderId: number[]): StoredConfig | null =>
       return {
         bindings: parsed.bindings ?? null,
         layout: parsed.layout ? cloneLayout(parsed.layout) : null,
+        ledConfig: parsed.ledConfig ?? null,
       };
     }
   } catch {
@@ -35,7 +37,7 @@ export const saveStoredConfig = (bootloaderId: number[], config: StoredConfig) =
   if (!storageAvailable) return;
   const key = `${STORAGE_PREFIX}:${bootloaderId.join("-")}`;
   try {
-    if (config.bindings || config.layout) {
+    if (config.bindings || config.layout || config.ledConfig) {
       window.localStorage.setItem(key, JSON.stringify(config));
     } else {
       window.localStorage.removeItem(key);

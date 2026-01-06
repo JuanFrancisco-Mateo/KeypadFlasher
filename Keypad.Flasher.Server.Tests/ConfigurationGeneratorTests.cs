@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Keypad.Flasher.Server.Configuration;
 using NUnit.Framework;
 
@@ -11,28 +14,31 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_MatchesExpectedLayout()
         {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 1,
+                    ActiveLow: true,
+                    LedIndex: -1,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("a", 0)),
+                new ButtonBinding(
+                    Pin: 2,
+                    ActiveLow: false,
+                    LedIndex: 0,
+                    BootloaderOnBoot: true,
+                    BootloaderChordMember: true,
+                    Function: HidSequenceBinding.FromFunction("hid_consumer_volume_up"))
+            };
+
             var configuration = new ConfigurationDefinition(
-                new List<ButtonBinding>
-                {
-                    new ButtonBinding(
-                        Pin: 1,
-                        ActiveLow: true,
-                        LedIndex: -1,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("a", 0)),
-                    new ButtonBinding(
-                        Pin: 2,
-                        ActiveLow: false,
-                        LedIndex: 0,
-                        BootloaderOnBoot: true,
-                        BootloaderChordMember: true,
-                        Function: HidSequenceBinding.FromFunction("hid_consumer_volume_up"))
-                },
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
                 NeoPixelPin: 34,
-                NeoPixelReversed: false);
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var expected = Lines(
                 "// This file is auto-generated. Do not edit manually.",
@@ -58,28 +64,31 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_WithMultipleLedIndices_ComputesNeoCountFromBindings()
         {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 1,
+                    ActiveLow: true,
+                    LedIndex: -1,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("a", 0)),
+                new ButtonBinding(
+                    Pin: 2,
+                    ActiveLow: true,
+                    LedIndex: 4,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("b", 0))
+            };
+
             var configuration = new ConfigurationDefinition(
-                new List<ButtonBinding>
-                {
-                    new ButtonBinding(
-                        Pin: 1,
-                        ActiveLow: true,
-                        LedIndex: -1,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("a", 0)),
-                    new ButtonBinding(
-                        Pin: 2,
-                        ActiveLow: true,
-                        LedIndex: 4,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("b", 0))
-                },
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
                 NeoPixelPin: 34,
-                NeoPixelReversed: false);
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -89,21 +98,24 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_WithCustomNeoPixelPin_EmitsPin()
         {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 1,
+                    ActiveLow: true,
+                    LedIndex: 0,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("a", 0))
+            };
+
             var configuration = new ConfigurationDefinition(
-                new List<ButtonBinding>
-                {
-                    new ButtonBinding(
-                        Pin: 1,
-                        ActiveLow: true,
-                        LedIndex: 0,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("a", 0))
-                },
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
                 NeoPixelPin: 31,
-                NeoPixelReversed: false);
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -113,21 +125,24 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_WithReversedNeoPixels_EmitsFlag()
         {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 1,
+                    ActiveLow: true,
+                    LedIndex: 0,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("a", 0))
+            };
+
             var configuration = new ConfigurationDefinition(
-                new List<ButtonBinding>
-                {
-                    new ButtonBinding(
-                        Pin: 1,
-                        ActiveLow: true,
-                        LedIndex: 0,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("a", 0))
-                },
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
                 NeoPixelPin: 31,
-                NeoPixelReversed: true);
+                NeoPixelReversed: true,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -137,21 +152,24 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_WithNoAssignedLedIndices_SetsNeoCountToZero()
         {
+            var buttons = new List<ButtonBinding>
+            {
+                new ButtonBinding(
+                    Pin: 1,
+                    ActiveLow: true,
+                    LedIndex: -1,
+                    BootloaderOnBoot: false,
+                    BootloaderChordMember: false,
+                    Function: new HidSequenceBinding("a", 0))
+            };
+
             var configuration = new ConfigurationDefinition(
-                new List<ButtonBinding>
-                {
-                    new ButtonBinding(
-                        Pin: 1,
-                        ActiveLow: true,
-                        LedIndex: -1,
-                        BootloaderOnBoot: false,
-                        BootloaderChordMember: false,
-                        Function: new HidSequenceBinding("a", 0))
-                },
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
                 NeoPixelPin: 34,
-                NeoPixelReversed: false);
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -164,12 +182,14 @@ namespace Keypad.Flasher.Server.Tests
         [Test]
         public void GenerateHeader_WithDebugMode_EmitsFlag()
         {
+            var buttons = Array.Empty<ButtonBinding>();
             var configuration = new ConfigurationDefinition(
-                Array.Empty<ButtonBinding>(),
+                buttons,
                 Array.Empty<EncoderBinding>(),
                 DebugMode: true,
                 NeoPixelPin: 34,
-                NeoPixelReversed: false);
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -195,7 +215,13 @@ namespace Keypad.Flasher.Server.Tests
                 new EncoderBinding(10, 11, HidSequenceBinding.FromFunction("hid_consumer_volume_up"), HidSequenceBinding.FromFunction("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: true, NeoPixelPin: 34, NeoPixelReversed: false);
+            var configuration = new ConfigurationDefinition(
+                buttons,
+                encoders,
+                DebugMode: true,
+                NeoPixelPin: 34,
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var result = Generator.GenerateSource(configuration);
 
@@ -238,7 +264,13 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("4", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: 34, NeoPixelReversed: false);
+            var configuration = new ConfigurationDefinition(
+                buttons,
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false,
+                NeoPixelPin: 34,
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var expected = ReadExpected("generate_source_4_buttons.c");
 
@@ -268,7 +300,13 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("2", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1, NeoPixelReversed: false);
+            var configuration = new ConfigurationDefinition(
+                buttons,
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false,
+                NeoPixelPin: -1,
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var expected = ReadExpected("generate_source_2_buttons.c");
 
@@ -354,7 +392,13 @@ namespace Keypad.Flasher.Server.Tests
                     Function: new HidSequenceBinding("9", 0))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, Array.Empty<EncoderBinding>(), DebugMode: false, NeoPixelPin: -1, NeoPixelReversed: false);
+            var configuration = new ConfigurationDefinition(
+                buttons,
+                Array.Empty<EncoderBinding>(),
+                DebugMode: false,
+                NeoPixelPin: -1,
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var expected = ReadExpected("generate_source_10_buttons.c");
 
@@ -407,13 +451,63 @@ namespace Keypad.Flasher.Server.Tests
                     CounterClockwise: HidSequenceBinding.FromFunction("hid_consumer_volume_down"))
             };
 
-            var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34, NeoPixelReversed: false);
+            var configuration = new ConfigurationDefinition(
+                buttons,
+                encoders,
+                DebugMode: false,
+                NeoPixelPin: 34,
+                NeoPixelReversed: false,
+                LedConfig: DefaultLedConfig(buttons));
 
             var expected = ReadExpected("generate_source_3_buttons_1_encoder.c");
 
             var result = Generator.GenerateSource(configuration);
 
             Assert.That(result, Is.EqualTo(expected));
+        }
+
+        private static LedConfiguration DefaultLedConfig(IReadOnlyList<ButtonBinding> buttons)
+        {
+            var maxLedIndex = -1;
+            for (var i = 0; i < buttons.Count; i++)
+            {
+                if (buttons[i].LedIndex > maxLedIndex)
+                {
+                    maxLedIndex = buttons[i].LedIndex;
+                }
+            }
+
+            var count = maxLedIndex + 1;
+            if (count <= 0)
+            {
+                return new LedConfiguration(
+                    PassiveMode: PassiveLedMode.Off,
+                    PassiveColors: Array.Empty<LedColor>(),
+                    ActiveModes: Array.Empty<ActiveLedMode>(),
+                    ActiveColors: Array.Empty<LedColor>());
+            }
+
+            var passiveColors = new LedColor[count];
+            var baseColors = new[]
+            {
+                new LedColor(255, 0, 0),
+                new LedColor(255, 255, 0),
+                new LedColor(0, 255, 0)
+            };
+
+            for (var i = 0; i < count; i++)
+            {
+                passiveColors[i] = baseColors[i % baseColors.Length];
+            }
+
+            var activeModes = Enumerable.Repeat(ActiveLedMode.Solid, count).ToArray();
+            var activeColors = Enumerable.Repeat(new LedColor(255, 255, 255), count).ToArray();
+
+            return new LedConfiguration(
+                PassiveMode: PassiveLedMode.Rainbow,
+                PassiveColors: passiveColors,
+                ActiveModes: activeModes,
+                ActiveColors: activeColors);
         }
 
         private static string ReadExpected(string fileName)

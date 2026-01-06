@@ -662,7 +662,7 @@ export function StepEditor({
       onAnimationEnd={(e) => handleModalAnimationEnd(e.animationName)}
     >
       <div
-        className={`modal${isClosingModal ? " closing" : ""}`}
+        className={`modal step-modal${isClosingModal ? " closing" : ""}`}
         onClick={(e) => e.stopPropagation()}
         onAnimationEnd={(e) => handleModalAnimationEnd(e.animationName)}
       >
@@ -840,7 +840,7 @@ export function StepEditor({
                               <label className="inline-input key-select">
                                 <span className="input-label">Pick from list</span>
                                 <select
-                                  className="text-input"
+                                  className="select-input"
                                   value={String(step.keycode ?? "")}
                                   onChange={(e) => {
                                     const parsed = Number(e.target.value);

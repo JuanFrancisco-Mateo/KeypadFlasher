@@ -37,7 +37,12 @@ namespace Keypad.Flasher.Server.Controllers
                     Array.Empty<EncoderBinding>(),
                     DebugMode: true,
                     NeoPixelPin: -1,
-                    NeoPixelReversed: false);
+                    NeoPixelReversed: false,
+                    LedConfig: new LedConfiguration(
+                        PassiveMode: PassiveLedMode.Off,
+                        PassiveColors: Array.Empty<LedColor>(),
+                        ActiveModes: Array.Empty<ActiveLedMode>(),
+                        ActiveColors: Array.Empty<LedColor>()));
 
                 var debugResult = _firmwareBuilder.BuildFirmware(debugOnlyConfiguration);
                 if (!debugResult.Success)
@@ -62,7 +67,7 @@ namespace Keypad.Flasher.Server.Controllers
             ConfigurationDefinition configuration;
             try
             {
-                configuration = LayoutConfigurationBuilder.FromLayout(request.Layout, request.BindingProfile, request.Debug);
+                configuration = LayoutConfigurationBuilder.FromLayout(request.Layout, request.BindingProfile, request.Debug, request.LedConfig);
             }
             catch (Exception ex)
             {
@@ -91,7 +96,8 @@ namespace Keypad.Flasher.Server.Controllers
         public record FirmwareRequest(
             DeviceLayout? Layout,
             BindingProfile? BindingProfile,
-            bool Debug = false);
+            bool Debug = false,
+            LedConfiguration? LedConfig = null);
 
     }
 }

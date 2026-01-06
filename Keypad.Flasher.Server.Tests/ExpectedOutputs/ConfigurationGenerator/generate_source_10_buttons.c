@@ -271,3 +271,11 @@ const encoder_binding_t encoder_bindings[] = {
 };
 
 const size_t encoder_binding_count = 0;
+
+const led_configuration_t led_configuration = {
+    .passive_mode = LED_PASSIVE_OFF,
+    .passive_colors = 0,
+    .active_modes = 0,
+    .active_colors = 0,
+    .count = 0
+};

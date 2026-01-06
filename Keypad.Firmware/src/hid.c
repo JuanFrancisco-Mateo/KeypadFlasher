@@ -211,11 +211,11 @@ void hid_handle_button(size_t button_index, hid_trigger_mode_t mode)
   {
     if (mode == HID_TRIGGER_PRESS)
     {
-      led_presskey(binding->led_index);
+      led_set_key_state(binding->led_index, true);
     }
     else if (mode == HID_TRIGGER_RELEASE)
     {
-      led_presskey(-1);
+      led_set_key_state(binding->led_index, false);
     }
   }
 #endif

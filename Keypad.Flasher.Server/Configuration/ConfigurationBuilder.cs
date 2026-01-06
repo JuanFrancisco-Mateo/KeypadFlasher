@@ -4,7 +4,7 @@ namespace Keypad.Flasher.Server.Configuration
 {
     public static class ConfigurationBuilder
     {
-        public static ConfigurationDefinition FromLayout(DeviceLayout layout, BindingProfile bindingProfile, bool debugMode)
+        public static ConfigurationDefinition FromLayout(DeviceLayout layout, BindingProfile bindingProfile, bool debugMode, LedConfiguration? ledConfig = null)
         {
             if (layout == null) throw new ArgumentNullException(nameof(layout));
             if (bindingProfile == null) throw new ArgumentNullException(nameof(bindingProfile));
@@ -18,13 +18,16 @@ namespace Keypad.Flasher.Server.Configuration
             var encoderBindings = BuildEncoderBindingLookup(bindingProfile.Encoders);
             var buttons = BuildButtons(layout, buttonBindings, encoderBindings);
             var encoders = BuildEncoders(layout, encoderBindings);
+            var ledCount = CalculateNeoPixelCount(buttons);
+            var normalizedLedConfig = NormalizeLedConfiguration(ledConfig, ledCount);
 
             return new ConfigurationDefinition(
                 Buttons: buttons,
                 Encoders: encoders,
                 DebugMode: debugMode,
                 NeoPixelPin: layout.NeoPixelPin,
-                NeoPixelReversed: layout.NeoPixelReversed);
+                NeoPixelReversed: layout.NeoPixelReversed,
+                LedConfig: normalizedLedConfig);
         }
 
         private static List<ButtonBinding> BuildButtons(
@@ -141,6 +144,120 @@ namespace Keypad.Flasher.Server.Configuration
             }
 
             return binding;
+        }
+
+        private static int CalculateNeoPixelCount(IReadOnlyCollection<ButtonBinding> buttons)
+        {
+            var maxLedIndex = -1;
+            foreach (var button in buttons)
+            {
+                if (button.LedIndex > maxLedIndex)
+                {
+                    maxLedIndex = button.LedIndex;
+                }
+            }
+
+            var count = maxLedIndex + 1;
+            return count < 0 ? 0 : count;
+        }
+
+        private static LedConfiguration NormalizeLedConfiguration(LedConfiguration? input, int ledCount)
+        {
+            if (ledCount <= 0)
+            {
+                return new LedConfiguration(
+                    PassiveMode: PassiveLedMode.Off,
+                    PassiveColors: Array.Empty<LedColor>(),
+                    ActiveModes: Array.Empty<ActiveLedMode>(),
+                    ActiveColors: Array.Empty<LedColor>());
+            }
+
+            var passiveMode = input?.PassiveMode ?? PassiveLedMode.Rainbow;
+
+            var passiveColors = new LedColor[ledCount];
+            if (input?.PassiveColors != null && input.PassiveColors.Count > 0)
+            {
+                if (input.PassiveColors.Count != ledCount)
+                {
+                    throw new InvalidOperationException($"Passive colors length {input.PassiveColors.Count} does not match LED count {ledCount}.");
+                }
+                for (var i = 0; i < ledCount; i++)
+                {
+                    passiveColors[i] = input.PassiveColors[i];
+                }
+            }
+            else
+            {
+                var defaults = BuildDefaultPassiveColors(ledCount);
+                for (var i = 0; i < ledCount; i++)
+                {
+                    passiveColors[i] = defaults[i];
+                }
+            }
+
+            var activeModes = new ActiveLedMode[ledCount];
+            if (input?.ActiveModes != null && input.ActiveModes.Count > 0)
+            {
+                if (input.ActiveModes.Count != ledCount)
+                {
+                    throw new InvalidOperationException($"Active modes length {input.ActiveModes.Count} does not match LED count {ledCount}.");
+                }
+                for (var i = 0; i < ledCount; i++)
+                {
+                    activeModes[i] = input.ActiveModes[i];
+                }
+            }
+            else
+            {
+                for (var i = 0; i < ledCount; i++)
+                {
+                    activeModes[i] = ActiveLedMode.Solid;
+                }
+            }
+
+            var activeColors = new LedColor[ledCount];
+            if (input?.ActiveColors != null && input.ActiveColors.Count > 0)
+            {
+                if (input.ActiveColors.Count != ledCount)
+                {
+                    throw new InvalidOperationException($"Active colors length {input.ActiveColors.Count} does not match LED count {ledCount}.");
+                }
+                for (var i = 0; i < ledCount; i++)
+                {
+                    activeColors[i] = input.ActiveColors[i];
+                }
+            }
+            else
+            {
+                for (var i = 0; i < ledCount; i++)
+                {
+                    activeColors[i] = new LedColor(255, 255, 255);
+                }
+            }
+
+            return new LedConfiguration(
+                PassiveMode: passiveMode,
+                PassiveColors: passiveColors,
+                ActiveModes: activeModes,
+                ActiveColors: activeColors);
+        }
+
+        private static LedColor[] BuildDefaultPassiveColors(int count)
+        {
+            var defaults = new LedColor[count];
+            var hues = new[]
+            {
+                new LedColor(255, 0, 0),
+                new LedColor(255, 255, 0),
+                new LedColor(0, 255, 0)
+            };
+
+            for (var i = 0; i < count; i++)
+            {
+                defaults[i] = hues[i % hues.Length];
+            }
+
+            return defaults;
         }
     }
 }

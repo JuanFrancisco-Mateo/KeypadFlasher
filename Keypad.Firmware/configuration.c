@@ -159,3 +159,26 @@ const encoder_binding_t encoder_bindings[] = {
 };
 
 const size_t encoder_binding_count = sizeof(encoder_bindings) / sizeof(encoder_bindings[0]);
+
+static const led_rgb_t led_passive_colors[] = {
+    { .r = 255, .g = 0, .b = 0 },
+    { .r = 255, .g = 255, .b = 0 },
+    { .r = 0, .g = 255, .b = 0 }
+};
+static const led_active_mode_t led_active_modes[] = {
+    LED_ACTIVE_SOLID,
+    LED_ACTIVE_SOLID,
+    LED_ACTIVE_SOLID
+};
+static const led_rgb_t led_active_colors[] = {
+    { .r = 255, .g = 255, .b = 255 },
+    { .r = 255, .g = 255, .b = 255 },
+    { .r = 255, .g = 255, .b = 255 }
+};
+const led_configuration_t led_configuration = {
+    .passive_mode = LED_PASSIVE_RAINBOW,
+    .passive_colors = led_passive_colors,
+    .active_modes = led_active_modes,
+    .active_colors = led_active_colors,
+    .count = 3
+};
