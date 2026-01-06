@@ -35,6 +35,7 @@ const MODIFIER_BITS = [
 
 const STORAGE_PREFIX = "ch55x-config";
 const storageAvailable = typeof window !== "undefined" && !!window.localStorage;
+const LAST_DEVICE_KEY = `${STORAGE_PREFIX}:last-device`;
 
 type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null };
 
@@ -72,6 +73,30 @@ const saveStoredConfig = (bootloaderId: number[], config: StoredConfig) => {
     } else {
       window.localStorage.removeItem(key);
     }
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const loadLastBootloaderId = (): number[] | null => {
+  if (!storageAvailable) return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_DEVICE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((n) => typeof n === "number")) {
+      return parsed as number[];
+    }
+  } catch {
+    // ignore parse/storage errors
+  }
+  return null;
+};
+
+const saveLastBootloaderId = (bootloaderId: number[]) => {
+  if (!storageAvailable) return;
+  try {
+    window.localStorage.setItem(LAST_DEVICE_KEY, JSON.stringify(bootloaderId));
   } catch {
     // ignore storage errors
   }
@@ -316,6 +341,7 @@ export default function CH55xBootloaderMinimal() {
   const [devMode, setDevMode] = useState<boolean>(false);
   const [debugFirmware, setDebugFirmware] = useState<boolean>(false);
   const [selectedProfile, setSelectedProfile] = useState<KnownDeviceProfile | null>(null);
+  const [rememberedBootloaderId, setRememberedBootloaderId] = useState<number[] | null>(null);
   const [currentBindings, setCurrentBindings] = useState<BindingProfileDto | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<DeviceLayoutDto | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
@@ -394,6 +420,19 @@ export default function CH55xBootloaderMinimal() {
     }
   }, [devMode, debugFirmware]);
 
+  useEffect(() => {
+    const lastId = loadLastBootloaderId();
+    if (!lastId) return;
+    setRememberedBootloaderId(lastId);
+    const profile = findProfileForBootloaderId(lastId);
+    setSelectedProfile(profile);
+    const stored = loadStoredConfig(lastId);
+    const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
+    const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+    setSelectedLayout(nextLayout);
+    setCurrentBindings(nextBindings);
+  }, []);
+
   const disconnectClient = useCallback(async (nextStatus?: Status, reboot?: boolean) => {
     const client = clientRef.current;
     if (client) {
@@ -456,6 +495,8 @@ export default function CH55xBootloaderMinimal() {
       lastBootloaderIdRef.current = info.id;
       setConnectedInfo(info);
       const profile = findProfileForBootloaderId(info.id);
+      setRememberedBootloaderId(info.id);
+      saveLastBootloaderId(info.id);
       setSelectedProfile(profile);
       const stored = loadStoredConfig(info.id);
       if (!sameDevice || !selectedLayout) {
@@ -501,9 +542,10 @@ export default function CH55xBootloaderMinimal() {
   }, [disconnectClient]);
 
   useEffect(() => {
-    if (!connectedInfo) return;
-    saveStoredConfig(connectedInfo.id, { bindings: currentBindings, layout: selectedLayout });
-  }, [connectedInfo, currentBindings, selectedLayout]);
+    const targetId = connectedInfo?.id ?? rememberedBootloaderId;
+    if (!targetId) return;
+    saveStoredConfig(targetId, { bindings: currentBindings, layout: selectedLayout });
+  }, [connectedInfo, rememberedBootloaderId, currentBindings, selectedLayout]);
 
   useEffect(() => {
     if (!webUsbAvailable || typeof navigator === "undefined" || !navigator.usb) return;
