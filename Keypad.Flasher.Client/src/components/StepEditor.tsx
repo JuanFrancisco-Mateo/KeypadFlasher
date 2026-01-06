@@ -14,6 +14,7 @@ import {
   normalizeIncomingStep,
 } from "../lib/binding-utils";
 import type { EditTarget } from "../types";
+import "./StepEditor.css";
 
 type StepEditorProps = {
   target: EditTarget | null;

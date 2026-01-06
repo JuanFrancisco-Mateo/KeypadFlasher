@@ -22,7 +22,7 @@ import { LayoutPreview } from "./components/LayoutPreview";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepEditor } from "./components/StepEditor";
 import type { EditTarget } from "./types";
-import "./keypad-flasher.css";
+import "./styles/base.css";
 
 type FirmwareRequestBody = {
   layout: DeviceLayoutDto | null;

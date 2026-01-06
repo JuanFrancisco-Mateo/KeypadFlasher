@@ -1,6 +1,7 @@
 import type { HidBindingDto, DeviceLayoutDto } from "../lib/keypad-configs";
 import { describeBinding } from "../lib/binding-utils";
 import type { EditTarget } from "../types";
+import "./LayoutPreview.css";
 
 type LayoutPreviewProps = {
   layout: DeviceLayoutDto;
