@@ -1,11 +1,10 @@
 /// <reference types="w3c-web-usb" />
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   CH55xBootloader,
   FakeBootloader,
   normalizeUsbErrorMessage,
   parseIntelHexBrowser,
-  readFileAsText,
   type BootloaderClient,
   type ConnectedInfo,
   type Progress,
@@ -82,6 +81,7 @@ export default function KeypadFlasherApp() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const clientRef = useRef<BootloaderClient | null>(null);
   const lastBootloaderIdRef = useRef<number[] | null>(null);
+  const [hexDragOver, setHexDragOver] = useState(false);
 
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
   const secure = typeof window !== "undefined" ? window.isSecureContext : true;
@@ -293,7 +293,40 @@ export default function KeypadFlasherApp() {
     };
   }, [connectedInfo, status.state, handlePassiveDisconnect, demoMode]);
 
-  const handlePickFile = useCallback(() => {
+  const handleHexDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (!hexDragOver) setHexDragOver(true);
+  }, [hexDragOver]);
+
+  const handleHexDragLeave = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    if (hexDragOver) setHexDragOver(false);
+  }, [hexDragOver]);
+
+  const processHexFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const { data } = parseIntelHexBrowser(text, 63 * 1024);
+      await flashBytes(data);
+    } catch (err) {
+      setStatus({ state: "flashError", detail: String((err as Error).message ?? err) });
+    }
+  }, [flashBytes]);
+
+  const handleHexDrop = useCallback(async (event: DragEvent) => {
+    event.preventDefault();
+    setHexDragOver(false);
+    if (!clientRef.current) {
+      setStatus({ state: "needConnect" });
+      return;
+    }
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    await processHexFile(file);
+  }, [processHexFile]);
+
+  const handleHexClick = useCallback(() => {
     if (!clientRef.current) {
       setStatus({ state: "needConnect" });
       return;
@@ -305,19 +338,12 @@ export default function KeypadFlasherApp() {
     fileInputRef.current?.click();
   }, []);
 
-  const onFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const onHexFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    try {
-      const text = await readFileAsText(file);
-      const { data } = parseIntelHexBrowser(text, 63 * 1024);
-      await flashBytes(data);
-    } catch (err) {
-      setStatus({ state: "flashError", detail: String((err as Error).message ?? err) });
-    } finally {
-      e.target.value = "";
-    }
-  }, [flashBytes]);
+    await processHexFile(file);
+    event.target.value = "";
+  }, [processHexFile]);
 
   const compileAndFlash = useCallback(async () => {
     if (!selectedLayout && !debugFirmware) {
@@ -562,8 +588,18 @@ export default function KeypadFlasherApp() {
           )}
           {devMode && (
             <>
-              <button onClick={handlePickFile} className="btn" disabled={!clientRef.current}>Upload .hex</button>
-              <input ref={fileInputRef} type="file" accept=".hex,.ihx,.ihex,.txt" className="hidden" onChange={onFileChange} />
+              <button
+                className={`btn${hexDragOver ? " btn-drop" : ""}`}
+                disabled={!clientRef.current}
+                onClick={handleHexClick}
+                onDragOver={handleHexDragOver}
+                onDragEnter={handleHexDragOver}
+                onDragLeave={handleHexDragLeave}
+                onDrop={handleHexDrop}
+              >
+                Upload .hex
+              </button>
+              <input ref={fileInputRef} type="file" accept=".hex,.ihx,.ihex,.txt" className="hidden" onChange={onHexFileChange} />
             </>
           )}
           <button onClick={compileAndFlash} className="btn btn-primary" disabled={!clientRef.current || (!selectedLayout && !debugFirmware)}>
@@ -572,7 +608,7 @@ export default function KeypadFlasherApp() {
         </div>
 
         {devMode && (
-          <div className="panel">
+          <div className="panel" style={{ marginBottom: "10px" }}>
             <div className="panel-header">
               <div className="panel-title">Development tools</div>
               <label className="checkbox">
@@ -583,19 +619,11 @@ export default function KeypadFlasherApp() {
             <p className="muted small">
               Use debug firmware to expose a USB CDC serial console for troubleshooting layouts. See the <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher#adding-support-for-new-keypads" target="_blank" rel="noreferrer">adding support guide</a> for wiring notes, LED direction tips, and how to contribute new keypad profiles.
             </p>
-            <div className="grid two-col small">
-              <div className="card subtle">
-                <div className="card-title">Connected device</div>
-                <div>Bootloader: {connectedInfo ? connectedInfo.version : "n/a"}</div>
-                <div>Bootloader ID: {connectedInfo ? connectedInfo.id.join(", ") : "n/a"}</div>
-                <div>Device ID: {connectedInfo ? connectedInfo.deviceIdHex : "n/a"}</div>
-              </div>
-              <div className="card subtle">
-                <div className="card-title">Advanced tips</div>
-                <div>- You can manually upload vendor .hex files via “Upload .hex”.</div>
-                <div>- Development mode keeps status verbose; check the Status box below for raw compiler output.</div>
-                <div>- If LEDs look reversed, set the layout’s NeoPixel order in its config entry.</div>
-              </div>
+            <div className="card subtle">
+              <div className="card-title">Connected device</div>
+              <div>Bootloader: {connectedInfo ? connectedInfo.version : "n/a"}</div>
+              <div>Bootloader ID: {connectedInfo ? connectedInfo.id.join(", ") : "n/a"}</div>
+              <div>Device ID: {connectedInfo ? connectedInfo.deviceIdHex : "n/a"}</div>
             </div>
           </div>
         )}
@@ -612,11 +640,6 @@ export default function KeypadFlasherApp() {
               {!selectedProfile && (
                 <div className="detected-help">
                   Not recognized. Use debug firmware or view supported layouts.
-                </div>
-              )}
-              {devMode && (
-                <div className="detected-meta small">
-                  Bootloader {connectedInfo.version} · ID {connectedInfo.id.join(", ")} · Device {connectedInfo.deviceIdHex}
                 </div>
               )}
             </div>

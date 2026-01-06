@@ -153,6 +153,10 @@ a {
   text-decoration: underline;
 }
 
+.hidden {
+  display: none;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -218,6 +222,16 @@ a {
 
 .btn-demo:hover:not(:disabled) {
   box-shadow: var(--button-shadow-strong);
+}
+
+.btn-drop {
+  border-style: dashed;
+  background: #f9fafb;
+}
+
+.btn-drop.btn:disabled {
+  background: var(--button-disabled-bg);
+  border-style: dashed;
 }
 
 .panel {
