@@ -54,9 +54,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
       return {
         style: {
           background: "var(--card-bg)",
-          backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.12), rgba(${color.r}, ${color.g}, ${color.b}, 0.06))`,
-          boxShadow: "var(--shadow)",
-          borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, 0.25)`,
+          backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.24), rgba(${color.r}, ${color.g}, ${color.b}, 0.12))`,
+          boxShadow: "var(--shadow-strong)",
+          borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, 0.32)`,
         }
       };
     }
@@ -98,7 +98,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     if (!isGridScrollable(e.currentTarget)) return;
     // Convert vertical wheel to horizontal scroll when hovered
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       e.currentTarget.scrollLeft += e.deltaY;
     }
   };
@@ -142,7 +142,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                   <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" })}>
                     <div className="encoder-binding-main">
                       <div className="encoder-binding-top"><span className="muted small">Counter-clockwise</span></div>
-                      <span className="binding-text">{ccw}</span>
+                      <div className="encoder-binding-body">
+                        <span className="binding-text">{ccw}</span>
+                      </div>
                     </div>
                     <div className="encoder-binding-actions hover-actions">
                       <button
@@ -156,7 +158,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                   <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" })}>
                     <div className="encoder-binding-main">
                       <div className="encoder-binding-top"><span className="muted small">Clockwise</span></div>
-                      <span className="binding-text">{cw}</span>
+                      <div className="encoder-binding-body">
+                        <span className="binding-text">{cw}</span>
+                      </div>
                     </div>
                     <div className="encoder-binding-actions hover-actions">
                       <button
@@ -171,7 +175,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                     <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "press" })}>
                       <div className="encoder-binding-main">
                         <div className="encoder-binding-top"><span className="muted small">Press</span></div>
-                        <span className="binding-text">{press}</span>
+                        <div className="encoder-binding-body">
+                          <span className="binding-text">{press}</span>
+                        </div>
                       </div>
                       <div className="encoder-binding-actions hover-actions">
                         <button

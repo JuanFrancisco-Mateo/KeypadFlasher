@@ -48,13 +48,13 @@
 
 .encoder-tile {
   width: var(--tile-size);
-  height: calc(2 * var(--tile-size) + var(--tile-gap) + 4 * var(--row-padding) - 2px);
+  height: calc(2 * var(--tile-size) + var(--tile-gap) + 4 * var(--row-padding));
   overflow: hidden;
   padding: 12px;
   padding-top: 48px;
   border-radius: 14px;
   border: 1px solid var(--border-color);
-  background: var(--card-bg);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.16)), var(--card-bg);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -273,16 +273,16 @@
 .button-tile.rainbow {
   background-color: var(--card-bg);
   background-image: linear-gradient(135deg,
-    rgba(255, 77, 79, 0.12),
-    rgba(255, 214, 102, 0.10),
-    rgba(115, 209, 61, 0.10),
-    rgba(64, 169, 255, 0.12),
-    rgba(255, 133, 192, 0.12),
-    rgba(255, 77, 79, 0.12)
+    rgba(255, 77, 79, 0.24),
+    rgba(255, 214, 102, 0.20),
+    rgba(115, 209, 61, 0.18),
+    rgba(64, 169, 255, 0.24),
+    rgba(255, 133, 192, 0.22),
+    rgba(255, 77, 79, 0.24)
   );
-  background-size: 120% 120%;
+  background-size: 140% 140%;
   animation: rainbow-sheen 13s ease infinite;
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
   box-shadow: var(--shadow);
 }
 
@@ -370,10 +370,21 @@
   z-index: 1;
   padding-top: 4px;
   text-align: center;
+  flex: 1;
 }
 
 .encoder-binding-tile .binding-text {
   text-align: center;
+}
+
+.encoder-binding-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 8px 10px;
+  box-sizing: border-box;
 }
 
 .encoder-binding-actions {

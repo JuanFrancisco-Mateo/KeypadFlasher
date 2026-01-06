@@ -18,7 +18,7 @@ import {
   type KnownDeviceProfile,
 } from "./lib/keypad-configs";
 import { normalizeIncomingStep } from "./lib/binding-utils";
-import { cloneLayout, loadLastBootloaderId, loadStoredConfig, saveLastBootloaderId, saveStoredConfig } from "./lib/layout-storage";
+import { cloneLayout, loadLastBootloaderId, loadLastDemoKey, loadStoredConfig, saveLastBootloaderId, saveLastDemoKey, saveStoredConfig } from "./lib/layout-storage";
 import { LayoutPreview } from "./components/LayoutPreview";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepEditor } from "./components/StepEditor";
@@ -152,6 +152,7 @@ export default function KeypadFlasherApp() {
   const [importText, setImportText] = useState<string>("");
   const [importError, setImportError] = useState<string>("");
   const [showDemoModal, setShowDemoModal] = useState<boolean>(false);
+  const [lastDemoKey, setLastDemoKey] = useState<string | null>(() => loadLastDemoKey());
   const [selectedDemoKey, setSelectedDemoKey] = useState<string | null>(null);
   const defaultLightingStatus = "Copy a key's lighting to paste or apply to all.";
   const modalPointerDownRef = useRef<boolean>(false);
@@ -213,13 +214,14 @@ export default function KeypadFlasherApp() {
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
   const secure = typeof window !== "undefined" ? window.isSecureContext : true;
 
+  const defaultDemoKey = "144-165-233-190"; // 6 Keys 1 Knob
+
   const demoOptions = useMemo(() => Object.entries(DEVICE_PROFILES)
     .map(([key, profile]) => ({
       key,
       name: profile.name,
       bootloaderId: key.split("-").map((n) => Number(n)).filter((n) => Number.isFinite(n)),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name)), []);
+    })), []);
 
   useEffect(() => () => {
     clientRef.current?.disconnect().catch(() => {});
@@ -335,13 +337,15 @@ export default function KeypadFlasherApp() {
       const key = lastId ? lastId.join("-") : null;
       return key && DEVICE_PROFILES[key] ? key : null;
     })();
-    const fallback = demoOptions[0]?.key ?? null;
+    const preferredDefault = demoOptions.find((opt) => opt.key === defaultDemoKey)?.key ?? null;
+    const fallback = preferredDefault ?? demoOptions[0]?.key ?? null;
     setSelectedDemoKey((prev) => {
       if (prev && demoOptions.some((opt) => opt.key === prev)) return prev;
+      if (lastDemoKey && demoOptions.some((opt) => opt.key === lastDemoKey)) return lastDemoKey;
       if (rememberedKey) return rememberedKey;
       return fallback;
     });
-  }, [showDemoModal, rememberedBootloaderId, demoOptions]);
+  }, [showDemoModal, rememberedBootloaderId, demoOptions, lastDemoKey, defaultDemoKey]);
 
   const startDemo = useCallback(async () => {
     const chosen = demoOptions.find((opt) => opt.key === selectedDemoKey) ?? demoOptions[0];
@@ -360,6 +364,8 @@ export default function KeypadFlasherApp() {
       clientRef.current = client;
       const info = await client.connect();
       setDemoMode(true);
+      setLastDemoKey(chosen.key);
+      saveLastDemoKey(chosen.key);
       applyConnectedDevice(info, { source: "demo", persistLastId: false });
     } catch (err) {
       clientRef.current = null;
@@ -968,7 +974,7 @@ export default function KeypadFlasherApp() {
       <div className="container">
         <header>
           <h1 className="title">Keypad Flasher</h1>
-          <p className="muted">Flash supported keypads directly from your browser using WebUSB. Requires a Chromium-based browser with WebUSB support.</p>
+          <p className="muted">Flash supported CH552X-based keypads directly from your browser using WebUSB.</p>
           <p className="muted small">
             <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher" target="_blank" rel="noreferrer">GitHub</a>
             <span aria-hidden="true"> | </span>
@@ -1132,7 +1138,6 @@ export default function KeypadFlasherApp() {
             >
               <div className="modal-header">
                 <div className="modal-title">Choose a demo device</div>
-                <button className="btn ghost" onClick={() => setShowDemoModal(false)}>Close</button>
               </div>
               <div className="modal-body">
                 <p className="muted small">Pick a supported device profile to explore the UI without connecting hardware.</p>

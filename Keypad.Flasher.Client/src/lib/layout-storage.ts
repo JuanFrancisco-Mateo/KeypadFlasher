@@ -3,6 +3,7 @@ import type { LedConfigurationDto } from "../types";
 
 const STORAGE_PREFIX = "keypad-flasher";
 const LAST_DEVICE_KEY = `${STORAGE_PREFIX}:last-device`;
+const LAST_DEMO_KEY = `${STORAGE_PREFIX}:last-demo`;
 const storageAvailable = typeof window !== "undefined" && !!window.localStorage;
 
 export type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null; ledConfig: LedConfigurationDto | null };
@@ -66,6 +67,28 @@ export const saveLastBootloaderId = (bootloaderId: number[]) => {
   if (!storageAvailable) return;
   try {
     window.localStorage.setItem(LAST_DEVICE_KEY, JSON.stringify(bootloaderId));
+  } catch {
+    // ignore storage errors
+  }
+};
+
+export const loadLastDemoKey = (): string | null => {
+  if (!storageAvailable) return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_DEMO_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "string" ? parsed : null;
+  } catch {
+    // ignore parse/storage errors
+  }
+  return null;
+};
+
+export const saveLastDemoKey = (key: string) => {
+  if (!storageAvailable) return;
+  try {
+    window.localStorage.setItem(LAST_DEMO_KEY, JSON.stringify(key));
   } catch {
     // ignore storage errors
   }
