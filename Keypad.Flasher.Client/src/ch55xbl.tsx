@@ -382,6 +382,12 @@ export default function CH55xBootloaderMinimal() {
     return generated;
   };
 
+  const cloneStepWithId = (prevStep: HidStepDto, nextStep: HidStepDto): HidStepDto => {
+    const id = getStepId(prevStep);
+    stepIdMap.current.set(nextStep, id);
+    return nextStep;
+  };
+
   const resetModalClosePending = () => {
     modalClosePendingRef.current.clear();
   };
@@ -523,7 +529,7 @@ export default function CH55xBootloaderMinimal() {
       setEditSteps((prev) => prev.map((s, i) => {
         if (i !== capturingStepIndex) return s;
         if (s.kind !== "Key") return s;
-        return { ...s, keycode: code };
+        return cloneStepWithId(s, { ...s, keycode: code });
       }));
       setCapturingStepIndex(null);
       input?.blur();
@@ -908,6 +914,18 @@ export default function CH55xBootloaderMinimal() {
     highlightTimerRef.current = window.setTimeout(() => setHighlightedSteps([]), 450);
   };
 
+  const isInteractiveElement = (target: EventTarget | null): boolean => {
+    if (!target || !(target as HTMLElement).closest) return false;
+    const elem = target as HTMLElement;
+    if (elem.closest("button, input, select, option, textarea, label")) return true;
+    if (elem.closest(".drag-handle")) return true;
+    return false;
+  };
+
+  const toggleStepCollapse = (index: number) => {
+    setActiveStepIndex((prev) => (prev === index ? null : index));
+  };
+
   const moveSteps = (sourceIndices: number[], targetIndex: number, afterMove?: (newIndices: number[], nextSteps: HidStepDto[]) => void, keepSelection: boolean = true) => {
     setEditSteps((prev) => {
       if (prev.length === 0) return prev;
@@ -1116,14 +1134,19 @@ export default function CH55xBootloaderMinimal() {
   const toggleStepModifier = (index: number, bit: number) => {
     setEditSteps((prev) => prev.map((s, i) => {
       if (i !== index || s.kind !== "Key") return s;
-      return { ...s, modifiers: (s.modifiers & bit) !== 0 ? (s.modifiers & ~bit) : (s.modifiers | bit) };
+      const nextStep: HidStepDto = { ...s, modifiers: (s.modifiers & bit) !== 0 ? (s.modifiers & ~bit) : (s.modifiers | bit) };
+      return cloneStepWithId(s, nextStep);
     }));
   };
 
   const updateFunctionValue = (index: number, value: string) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-    setEditSteps((prev) => prev.map((s, i) => (i === index && s.kind === "Function" ? { ...s, functionValue: nextValue } : s)));
+    setEditSteps((prev) => prev.map((s, i) => {
+      if (i !== index || s.kind !== "Function") return s;
+      const nextStep: HidStepDto = { ...s, functionValue: nextValue };
+      return cloneStepWithId(s, nextStep);
+    }));
   };
 
   const updateStepTiming = (index: number, field: "holdMs" | "gapMs", value: string) => {
@@ -1132,16 +1155,16 @@ export default function CH55xBootloaderMinimal() {
     setEditSteps((prev) => prev.map((s, i) => {
       if (i !== index) return s;
       if (s.kind === "Key") {
-        return { ...s, [field]: nextValue } as HidStepDto;
+        return cloneStepWithId(s, { ...s, [field]: nextValue } as HidStepDto);
       }
       if (field === "gapMs" && s.kind === "Pause") {
-        return { ...s, gapMs: nextValue };
+        return cloneStepWithId(s, { ...s, gapMs: nextValue });
       }
       if (field === "gapMs" && s.kind === "Function") {
-        return { ...s, gapMs: nextValue };
+        return cloneStepWithId(s, { ...s, gapMs: nextValue });
       }
       if (field === "gapMs" && s.kind === "Mouse") {
-        return { ...s, gapMs: nextValue };
+        return cloneStepWithId(s, { ...s, gapMs: nextValue });
       }
       return s;
     }));
@@ -1154,11 +1177,11 @@ export default function CH55xBootloaderMinimal() {
         const keycode = s.kind === "Key" ? s.keycode : 97;
         const holdMs = s.kind === "Key" && s.holdMs > 0 ? s.holdMs : 10;
         const gapMs = s.kind === "Key" && s.gapMs > 0 ? s.gapMs : 10;
-        return { kind: "Key", keycode, modifiers: s.kind === "Key" ? s.modifiers : 0, holdMs, gapMs };
+        return cloneStepWithId(s, { kind: "Key", keycode, modifiers: s.kind === "Key" ? s.modifiers : 0, holdMs, gapMs });
       }
       if (kind === "Pause") {
         const gapMs = s.kind === "Key" || s.kind === "Function" || s.kind === "Mouse" ? (s.gapMs > 0 ? s.gapMs : 100) : s.gapMs;
-        return { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 };
+        return cloneStepWithId(s, { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 });
       }
       if (kind === "Mouse") {
         const pointerType = s.kind === "Mouse" ? s.pointerType : HID_POINTER_TYPE.LeftClick;
@@ -1166,12 +1189,12 @@ export default function CH55xBootloaderMinimal() {
           ? 0
           : defaultMouseValue(pointerType);
         const gapMs = s.kind === "Mouse" && s.gapMs >= 0 ? s.gapMs : 0;
-        return { kind: "Mouse", pointerType: pointerType as HidPointerType, pointerValue, gapMs };
+        return cloneStepWithId(s, { kind: "Mouse", pointerType: pointerType as HidPointerType, pointerValue, gapMs });
       }
       const gapMs = s.kind === "Function" && s.gapMs >= 0 ? s.gapMs : 0;
       const functionPointer = s.kind === "Function" ? (s.functionPointer || DEFAULT_FUNCTION_POINTER) : DEFAULT_FUNCTION_POINTER;
       const functionValue = FUNCTIONS_WITH_VALUE.has(functionPointer) && s.kind === "Function" && s.functionValue ? s.functionValue : 1;
-      return { kind: "Function", functionPointer, functionValue, gapMs };
+      return cloneStepWithId(s, { kind: "Function", functionPointer, functionValue, gapMs });
     }));
     if (kind !== "Key" && capturingStepIndex != null && capturingStepIndex === index) {
       setCapturingStepIndex(null);
@@ -1632,7 +1655,7 @@ export default function CH55xBootloaderMinimal() {
                       : measuredHeight != null
                         ? `${measuredHeight}px`
                         : (isFresh ? "0px" : "1200px");
-                    const cardClasses = `step-card${kind === "Pause" ? " step-card-pause" : ""}${selected ? " step-card-selected" : ""}${draggingStepIndex === idx ? " step-card-dragging" : ""}${dragOverIndex === idx ? " step-card-drop-target" : ""}${inDragGroup ? " step-card-drag-group" : ""}${highlighted ? " step-card-highlight" : ""}${removing ? " step-card-removing" : ""}${collapsed ? " step-card-collapsed" : ""}${isFresh ? " step-card-fresh" : ""}`;
+                    const cardClasses = `step-card${selected ? " step-card-selected" : ""}${draggingStepIndex === idx ? " step-card-dragging" : ""}${dragOverIndex === idx ? " step-card-drop-target" : ""}${inDragGroup ? " step-card-drag-group" : ""}${highlighted ? " step-card-highlight" : ""}${removing ? " step-card-removing" : ""}${collapsed ? " step-card-collapsed" : ""}${isFresh ? " step-card-fresh" : ""}`;
                     return (
                       <div
                         className={cardClasses}
@@ -1650,11 +1673,10 @@ export default function CH55xBootloaderMinimal() {
                         onDrop={(e) => handleDrop(e, idx)}
                         onDragLeave={() => { if (dragOverIndex === idx) setDragOverIndex(null); }}
                         onDragEnd={handleDragEnd}
-                        onClick={() => setActiveStepIndex((prev) => (prev === idx ? null : idx))}
                         onAnimationEnd={(e) => handleCardAnimationEnd(stepKey, idx, e)}
                         aria-label={`Step ${idx + 1} ${kind}`}
                       >
-                        <div className="step-header">
+                        <div className="step-header" onClick={(e) => { if (!isInteractiveElement(e.target)) toggleStepCollapse(idx); }}>
                             <div className="step-header-left">
                               <span className="drag-handle" title="Drag to reorder">::</span>
                               <label className="checkbox step-select">
@@ -1685,10 +1707,30 @@ export default function CH55xBootloaderMinimal() {
                           style={{ maxHeight: bodyMaxHeight }}
                         >
                           <div className="step-kind-toggle">
-                            <button className={`btn ghost${kind === "Key" ? " active" : ""}`} onClick={() => setStepKind(idx, "Key")}>Key</button>
-                            <button className={`btn ghost${kind === "Pause" ? " active" : ""}`} onClick={() => setStepKind(idx, "Pause")}>Pause</button>
-                            <button className={`btn ghost${kind === "Mouse" ? " active" : ""}`} onClick={() => setStepKind(idx, "Mouse")}>Mouse</button>
-                            <button className={`btn ghost${kind === "Function" ? " active" : ""}`} onClick={() => setStepKind(idx, "Function")}>Function</button>
+                            <button
+                              className={`btn ghost${kind === "Key" ? " active" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setStepKind(idx, "Key"); }}
+                            >
+                              Key
+                            </button>
+                            <button
+                              className={`btn ghost${kind === "Pause" ? " active" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setStepKind(idx, "Pause"); }}
+                            >
+                              Pause
+                            </button>
+                            <button
+                              className={`btn ghost${kind === "Mouse" ? " active" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setStepKind(idx, "Mouse"); }}
+                            >
+                              Mouse
+                            </button>
+                            <button
+                              className={`btn ghost${kind === "Function" ? " active" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setStepKind(idx, "Function"); }}
+                            >
+                              Function
+                            </button>
                           </div>
                           {kind === "Pause" && (
                             <>
@@ -1720,7 +1762,11 @@ export default function CH55xBootloaderMinimal() {
                                       onChange={(e) => {
                                         const parsed = Number(e.target.value);
                                         if (!Number.isFinite(parsed)) return;
-                                        setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Key" ? { ...s, keycode: parsed } : s)));
+                                        setEditSteps((prev) => prev.map((s, i) => {
+                                          if (i !== idx || s.kind !== "Key") return s;
+                                          const nextStep: HidStepDto = { ...s, keycode: parsed };
+                                          return cloneStepWithId(s, nextStep);
+                                        }));
                                       }}
                                     >
                                       <option value="0">None (modifiers only)</option>
@@ -1799,7 +1845,8 @@ export default function CH55xBootloaderMinimal() {
                                           const nextValue = nextType === HID_POINTER_TYPE.LeftClick || nextType === HID_POINTER_TYPE.RightClick
                                             ? 0
                                             : defaultMouseValue(nextType);
-                                          return { ...s, pointerType: nextType, pointerValue: nextValue };
+                                          const nextStep: HidStepDto = { ...s, pointerType: nextType, pointerValue: nextValue };
+                                          return cloneStepWithId(s, nextStep);
                                         }));
                                       }}
                                     >
@@ -1820,7 +1867,11 @@ export default function CH55xBootloaderMinimal() {
                                       type="number"
                                       min={0}
                                       value={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "" : step.pointerValue}
-                                      onChange={(e) => setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Mouse" ? { ...s, pointerValue: Number(e.target.value) } : s)))}
+                                      onChange={(e) => setEditSteps((prev) => prev.map((s, i) => {
+                                        if (i !== idx || s.kind !== "Mouse") return s;
+                                        const nextStep: HidStepDto = { ...s, pointerValue: Number(e.target.value) };
+                                        return cloneStepWithId(s, nextStep);
+                                      }))}
                                       disabled={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick}
                                       placeholder={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "N/A" : ""}
                                       title={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "Value is ignored for click actions" : "Movement/scroll amount"}
@@ -1860,7 +1911,8 @@ export default function CH55xBootloaderMinimal() {
                                         if (i !== idx || s.kind !== "Function") return s;
                                         const nextPointer = e.target.value || DEFAULT_FUNCTION_POINTER;
                                         const nextValue = FUNCTIONS_WITH_VALUE.has(nextPointer) ? (s.functionValue ?? 1) : 1;
-                                        return { ...s, functionPointer: nextPointer, functionValue: nextValue };
+                                        const nextStep: HidStepDto = { ...s, functionPointer: nextPointer, functionValue: nextValue };
+                                        return cloneStepWithId(s, nextStep);
                                       }))}
                                     >
                                       {Object.entries(FRIENDLY_FUNCTIONS).map(([fn, friendly]) => (

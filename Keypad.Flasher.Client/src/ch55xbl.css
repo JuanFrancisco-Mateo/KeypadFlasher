@@ -669,6 +669,7 @@
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 6px;
+    cursor: pointer;
 }
 
 .step-header-actions {
