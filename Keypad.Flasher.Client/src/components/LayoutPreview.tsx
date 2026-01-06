@@ -23,7 +23,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     <div className="panel">
       <div className="panel-header" style={{ gap: "12px" }}>
         <div className="panel-title">Layout</div>
-        <div className="muted small">Click any button or encoder tile to change its binding. Bootloader chord = combo you press anytime to jump into bootloader (vs. on-boot, which is only at plug-in).</div>
+        <div className="muted small">Click any button or encoder tile to change its binding.</div>
         {canReset && onResetDefaults && (
           <button className="btn ghost" onClick={onResetDefaults}>Reset to defaults</button>
         )}

@@ -514,7 +514,7 @@ export default function KeypadFlasherApp() {
       case "flashing":
         return { tone: "info" as const, title: "Flashing firmware…", body: "Keep the device connected until it finishes." };
       case "flashDone":
-        return { tone: "success" as const, title: "Flash finished", body: "You can reconnect or flash again." };
+        return { tone: "success" as const, title: "Flash finished", body: "Reconnect the device before flashing again." };
       case "compileError":
         return { tone: "error" as const, title: "Compile failed", body: status.detail };
       case "flashError":
@@ -538,6 +538,11 @@ export default function KeypadFlasherApp() {
         <header>
           <h1 className="title">Keypad Flasher</h1>
           <p className="muted">Flash supported keypads directly from your browser using WebUSB. Requires a Chromium-based browser with WebUSB support.</p>
+          <p className="muted small">
+            <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher" target="_blank" rel="noreferrer">GitHub</a>
+            <span aria-hidden="true"> | </span>
+            <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher#usage" target="_blank" rel="noreferrer">Docs</a>
+          </p>
         </header>
 
         <div className="actions">

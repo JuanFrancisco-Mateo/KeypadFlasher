@@ -705,7 +705,8 @@ export function StepEditor({
                     Part of bootloader chord
                   </label>
                 )}
-                <div className="muted small">Bootloader chord = the combo you can press any time to enter bootloader without replugging. On-boot triggers only while plugging in; chord members reduce accidental triggers.</div>
+                <div className="muted small">Bootloader chord = the combo you can press any time to enter bootloader without replugging.</div>
+                <div className="muted small">On-boot triggers only while plugging in; chord members reduce accidental triggers.</div>
               </div>
             );
           })()}

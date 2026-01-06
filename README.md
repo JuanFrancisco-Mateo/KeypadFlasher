@@ -7,7 +7,6 @@ This project contains custom firmware compatible with a number of different CH55
 This project is work in progress, what's left to do:
 - Add LED configuration and effects
 - Build the adapter to easily enter bootloader mode without opening the device up or making the contraption manually
-- Refactor and clean up the codebase into more manageable pieces
 - Probably some other stuff I've forgotten about
 
 ## Usage
