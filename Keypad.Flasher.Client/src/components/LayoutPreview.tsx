@@ -267,13 +267,12 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
           <div className="modal config-modal">
             <div className="modal-header">
               <div className="modal-title">Reset layout to defaults?</div>
-              <button className="btn ghost" onClick={() => setConfirmReset(false)}>Close</button>
             </div>
             <div className="stack" style={{ gap: "0.5rem", marginTop: "0.35rem" }}>
               <div className="muted">This will replace all button and encoder bindings with the default profile values.</div>
             </div>
-            <div className="layout-actions" style={{ marginTop: "1rem", justifyContent: "flex-end" }}>
-              <button className="btn ghost" onClick={() => setConfirmReset(false)}>Cancel</button>
+            <div className="modal-actions" style={{ marginTop: "1rem" }}>
+              <button className="btn" onClick={() => setConfirmReset(false)}>Cancel</button>
               <button className="btn btn-warn" onClick={() => { setConfirmReset(false); onResetDefaults?.(); }}>Confirm reset</button>
             </div>
           </div>

@@ -654,7 +654,6 @@ export function StepEditor({
       >
         <div className="modal-header">
           <div className="modal-title">Edit {target.type === "button" ? `Button ${target.buttonId + 1}` : `Encoder ${target.encoderId + 1}`} bindings</div>
-          <button className="btn ghost" onClick={requestClose}>Close</button>
         </div>
         {target.type === "encoder" && (
           <div className="muted small">

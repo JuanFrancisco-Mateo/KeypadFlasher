@@ -308,7 +308,7 @@
 .encoder-binding-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   margin-top: 4px;
   flex: 1;
   min-height: 0;
@@ -334,7 +334,6 @@
 .encoder-binding-tile:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-strong);
-  border-color: var(--accent);
 }
 
 .encoder-binding-top {

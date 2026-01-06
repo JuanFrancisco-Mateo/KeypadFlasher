@@ -158,6 +158,7 @@ export default function KeypadFlasherApp() {
   const modalPointerDownRef = useRef<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const importTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const clientRef = useRef<BootloaderClient | null>(null);
   const lastBootloaderIdRef = useRef<number[] | null>(null);
   const [hexDragOver, setHexDragOver] = useState(false);
@@ -226,6 +227,14 @@ export default function KeypadFlasherApp() {
   useEffect(() => () => {
     clientRef.current?.disconnect().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!showImportModal) return;
+    const el = importTextAreaRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, [showImportModal]);
 
   useEffect(() => {
     if (!devMode && debugFirmware) {
@@ -1297,7 +1306,6 @@ export default function KeypadFlasherApp() {
             >
               <div className="modal-header">
                 <div className="modal-title">Export configuration</div>
-                <button className="btn ghost" onClick={() => setShowExportModal(false)}>Close</button>
               </div>
               <div className="modal-body">
                 <p className="muted small">Click the block to copy. This includes layout, bindings, and lighting.</p>
@@ -1308,6 +1316,9 @@ export default function KeypadFlasherApp() {
                   aria-label="Exported configuration JSON"
                 >{exportText}</pre>
                 <div className="muted small" style={{ minHeight: "18px" }}>{exportCopyStatus}</div>
+              </div>
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setShowExportModal(false)}>Close</button>
               </div>
             </div>
           </div>
@@ -1331,13 +1342,13 @@ export default function KeypadFlasherApp() {
             >
               <div className="modal-header">
                 <div className="modal-title">Import configuration</div>
-                <button className="btn ghost" onClick={() => setShowImportModal(false)}>Close</button>
               </div>
               <div className="modal-body">
                 <p className="muted small">Paste an exported configuration below. It will replace the current layout, bindings, and lighting.</p>
                 <textarea
                   className="code-block text-area"
                   style={{ width: "100%", minHeight: "220px" }}
+                  ref={importTextAreaRef}
                   value={importText}
                   onChange={(e) => { setImportText(e.target.value); setImportError(""); }}
                   placeholder="Paste configuration JSON here"
