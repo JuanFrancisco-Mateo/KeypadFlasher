@@ -330,6 +330,7 @@ export default function CH55xBootloaderMinimal() {
   const [dragRestoreStep, setDragRestoreStep] = useState<HidStepDto | null>(null);
   const [highlightedSteps, setHighlightedSteps] = useState<number[]>([]);
   const [removingStepIds, setRemovingStepIds] = useState<string[]>([]);
+  const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
   const unsupportedDevicesUrl = "https://github.com/AmyJeanes/KeypadFlasher#supported-devices";
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -338,7 +339,10 @@ export default function CH55xBootloaderMinimal() {
   const lastBootloaderIdRef = useRef<number[] | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const removeTimerRef = useRef<Map<string, number>>(new Map());
+  const modalClosePendingRef = useRef<Set<string>>(new Set());
   const stepBodyRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const stepCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const stepsScrollRef = useRef<HTMLDivElement | null>(null);
   const stepIdMap = useRef<WeakMap<HidStepDto, string>>(new WeakMap());
 
   const getStepId = (step: HidStepDto): string => {
@@ -347,6 +351,10 @@ export default function CH55xBootloaderMinimal() {
     const generated = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `step-${Math.random().toString(36).slice(2)}`;
     stepIdMap.current.set(step, generated);
     return generated;
+  };
+
+  const resetModalClosePending = () => {
+    modalClosePendingRef.current.clear();
   };
 
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
@@ -363,6 +371,7 @@ export default function CH55xBootloaderMinimal() {
       if (highlightTimerRef.current != null) window.clearTimeout(highlightTimerRef.current);
       removeTimerRef.current.forEach((id) => window.clearTimeout(id));
       removeTimerRef.current.clear();
+      resetModalClosePending();
     };
   }, []);
 
@@ -626,6 +635,8 @@ export default function CH55xBootloaderMinimal() {
   }
 
   const openEdit = (target: EditTarget) => {
+    resetModalClosePending();
+    setIsClosingModal(false);
     setCapturingStepIndex(null);
     setSelectedStepIndices([]);
     setDragOverIndex(null);
@@ -673,6 +684,17 @@ export default function CH55xBootloaderMinimal() {
     const timer = window.setTimeout(() => setFreshSteps([]), 1200);
     return () => window.clearTimeout(timer);
   }, [freshSteps]);
+
+  useEffect(() => {
+    if (activeStepIndex == null) return;
+    const step = editSteps[activeStepIndex];
+    if (!step) return;
+    const id = getStepId(step);
+    const cardEl = stepCardRefs.current.get(id);
+    if (cardEl) {
+      cardEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeStepIndex, editSteps]);
 
   useLayoutEffect(() => {
     const heights: Record<string, number> = {};
@@ -893,6 +915,9 @@ export default function CH55xBootloaderMinimal() {
         if (activeRef) {
           const found = next.findIndex((s) => s === activeRef);
           setActiveStepIndex(found >= 0 ? found : null);
+        }
+        if (newIndices.length > 0) {
+          setActiveStepIndex(newIndices[newIndices.length - 1]);
         }
         setSelectedStepIndices((prevSel) => prevSel);
         setFreshSteps((prevFresh) => [...prevFresh, ...newIds]);
@@ -1153,12 +1178,31 @@ export default function CH55xBootloaderMinimal() {
     }
   };
 
+  const finalizeClose = () => {
+    setEditTarget(null);
+    setIsClosingModal(false);
+    resetModalClosePending();
+  };
+
   const closeEdit = () => {
+    if (!editTarget) return;
+    if (isClosingModal) return;
+    setIsClosingModal(true);
+    resetModalClosePending();
     setCapturingStepIndex(null);
     setSelectedStepIndices([]);
     setDragOverIndex(null);
     setDraggingStepIndex(null);
-    setEditTarget(null);
+    modalClosePendingRef.current = new Set(["modal-pop-out", "backdrop-fade-out"]);
+  };
+
+  const handleModalAnimationEnd = (animationName: string) => {
+    if (!isClosingModal) return;
+    if (!modalClosePendingRef.current.has(animationName)) return;
+    modalClosePendingRef.current.delete(animationName);
+    if (modalClosePendingRef.current.size === 0) {
+      finalizeClose();
+    }
   };
   const baseRows = selectedLayout
     ? (selectedLayout.displayRows && selectedLayout.displayRows.length > 0
@@ -1379,8 +1423,18 @@ export default function CH55xBootloaderMinimal() {
         )}
 
         {editTarget && (
-          <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`modal-backdrop${isClosingModal ? " closing" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}
+            onAnimationEnd={(e) => handleModalAnimationEnd(e.animationName)}
+          >
+            <div
+              className={`modal${isClosingModal ? " closing" : ""}`}
+              onClick={(e) => e.stopPropagation()}
+              onAnimationEnd={(e) => handleModalAnimationEnd(e.animationName)}
+            >
               <div className="modal-header">
                 <div className="modal-title">Edit {editTarget.type === "button" ? `Button ${editTarget.buttonId + 1}` : `Encoder ${editTarget.encoderId + 1}`}</div>
                 <button className="btn ghost" onClick={closeEdit}>Close</button>
@@ -1440,7 +1494,7 @@ export default function CH55xBootloaderMinimal() {
                       <button className="btn ghost" onClick={pasteStepsFromClipboard}>Paste</button>
                     </div>
                   </div>
-                  <div className="steps-list steps-scroll">
+                  <div className="steps-list steps-scroll" ref={stepsScrollRef}>
                     {editSteps.length === 0 && <div className="muted small">No steps yet. Add a key, mouse action, function, or pause.</div>}
                     {editSteps.map((step, idx) => {
                     const stepKey = getStepId(step);
@@ -1463,6 +1517,13 @@ export default function CH55xBootloaderMinimal() {
                         className={cardClasses}
                         key={`step-${stepKey}`}
                         draggable
+                          ref={(el) => {
+                            if (el) {
+                              stepCardRefs.current.set(stepKey, el);
+                            } else {
+                              stepCardRefs.current.delete(stepKey);
+                            }
+                          }}
                         onDragStart={(e) => handleDragStart(e, idx)}
                         onDragOver={(e) => handleDragOver(e, idx)}
                         onDrop={(e) => handleDrop(e, idx)}

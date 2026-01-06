@@ -417,6 +417,10 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
+    animation: backdrop-fade 160ms ease forwards;
+}
+.modal-backdrop.closing {
+    animation: backdrop-fade-out 160ms ease forwards;
 }
 .modal {
     background: var(--card-bg);
@@ -430,6 +434,11 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: var(--shadow-strong);
+    transform-origin: top center;
+    animation: modal-pop 220ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.modal.closing {
+    animation: modal-pop-out 200ms ease forwards;
 }
 
 .modal-header {
@@ -845,4 +854,36 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+@keyframes modal-pop {
+    from {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes modal-pop-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
+    }
+}
+
+@keyframes backdrop-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes backdrop-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
