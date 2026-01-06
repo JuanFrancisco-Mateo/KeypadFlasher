@@ -1522,16 +1522,16 @@ export default function CH55xBootloaderMinimal() {
                       return (
                         <div className="encoder-binding-list">
                           <div className="encoder-binding-tile clickable" onClick={() => openEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" })}>
-                            <div className="encoder-binding-top"><span className="muted small">CCW</span><span className="edit-pill">Edit</span></div>
+                            <div className="encoder-binding-top"><span className="muted small">CCW</span></div>
                             <span className="binding-text">{ccw}</span>
                           </div>
                           <div className="encoder-binding-tile clickable" onClick={() => openEdit({ type: "encoder", encoderId: enc.id, direction: "cw" })}>
-                            <div className="encoder-binding-top"><span className="muted small">CW</span><span className="edit-pill">Edit</span></div>
+                            <div className="encoder-binding-top"><span className="muted small">CW</span></div>
                             <span className="binding-text">{cw}</span>
                           </div>
                           {enc.press && (
                             <div className="encoder-binding-tile clickable" onClick={() => openEdit({ type: "encoder", encoderId: enc.id, direction: "press" })}>
-                              <div className="encoder-binding-top"><span className="muted small">Press</span><span className="edit-pill">Edit</span></div>
+                              <div className="encoder-binding-top"><span className="muted small">Press</span></div>
                               <span className="binding-text">{press}</span>
                             </div>
                           )}
@@ -1584,7 +1584,13 @@ export default function CH55xBootloaderMinimal() {
                 <button className="btn ghost" onClick={closeEdit}>Close</button>
               </div>
               {editTarget.type === "encoder" && (
-                <div className="muted small">Direction: {editTarget.direction.toUpperCase()} {editTarget.direction === "cw" ? "(Clockwise)" : editTarget.direction === "ccw" ? "(Counter-Clockwise)" : ""}</div>
+                <div className="muted small">
+                  Input: {editTarget.direction.toUpperCase()} {editTarget.direction === "cw"
+                    ? "(Clockwise)"
+                    : editTarget.direction === "ccw"
+                      ? "(Counter-Clockwise)"
+                      : "(Press switch)"}
+                </div>
               )}
               <div className="modal-body">
                 {(() => {
