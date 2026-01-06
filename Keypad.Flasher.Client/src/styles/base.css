@@ -170,6 +170,40 @@ a {
   width: min(520px, 90vw);
 }
 
+.demo-modal {
+  width: min(320px, 90vw);
+}
+
+.demo-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.demo-option input[type="radio"] {
+  margin-top: 4px;
+}
+
+.demo-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demo-option-name {
+  font-weight: 600;
+}
+
+.demo-option.demo-option-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.28);
+}
+
 .code-block {
   background: var(--card-bg);
   border: 1px solid var(--border-color);

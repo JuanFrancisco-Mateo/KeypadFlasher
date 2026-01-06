@@ -1,5 +1,5 @@
 /// <reference types="w3c-web-usb" />
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   CH55xBootloader,
   FakeBootloader,
@@ -11,6 +11,7 @@ import {
 } from "./lib/ch55x-bootloader";
 import {
   findProfileForBootloaderId,
+  DEVICE_PROFILES,
   type BindingProfileDto,
   type DeviceLayoutDto,
   type HidBindingDto,
@@ -93,7 +94,7 @@ const validateBindingProfileCandidate = (raw: any): BindingProfileDto => {
     const press = (e as any).press;
     if (!cw || cw.type !== "Sequence" || !Array.isArray(cw.steps)) throw new Error("Encoder clockwise binding invalid.");
     if (!ccw || ccw.type !== "Sequence" || !Array.isArray(ccw.steps)) throw new Error("Encoder counter-clockwise binding invalid.");
-    const base = {
+    const base: { id: number; clockwise: HidBindingDto; counterClockwise: HidBindingDto; press?: HidBindingDto } = {
       id,
       clockwise: { type: "Sequence", steps: cw.steps.map((s: any) => normalizeIncomingStep(s)) } as HidBindingDto,
       counterClockwise: { type: "Sequence", steps: ccw.steps.map((s: any) => normalizeIncomingStep(s)) } as HidBindingDto,
@@ -150,6 +151,8 @@ export default function KeypadFlasherApp() {
   const [exportCopyFlash, setExportCopyFlash] = useState<boolean>(false);
   const [importText, setImportText] = useState<string>("");
   const [importError, setImportError] = useState<string>("");
+  const [showDemoModal, setShowDemoModal] = useState<boolean>(false);
+  const [selectedDemoKey, setSelectedDemoKey] = useState<string | null>(null);
   const defaultLightingStatus = "Copy a key's lighting to paste or apply to all.";
   const modalPointerDownRef = useRef<boolean>(false);
 
@@ -209,6 +212,14 @@ export default function KeypadFlasherApp() {
 
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
   const secure = typeof window !== "undefined" ? window.isSecureContext : true;
+
+  const demoOptions = useMemo(() => Object.entries(DEVICE_PROFILES)
+    .map(([key, profile]) => ({
+      key,
+      name: profile.name,
+      bootloaderId: key.split("-").map((n) => Number(n)).filter((n) => Number.isFinite(n)),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name)), []);
 
   useEffect(() => () => {
     clientRef.current?.disconnect().catch(() => {});
@@ -317,18 +328,35 @@ export default function KeypadFlasherApp() {
     await disconnectClient({ state: "deviceLost", detail: detail ?? "Device disconnected. Reconnect to continue." });
   }, [disconnectClient]);
 
-  const handleDemoToggle = useCallback(async () => {
-    if (demoMode) {
-      await disconnectClient({ state: "idle" });
+  useEffect(() => {
+    if (!showDemoModal) return;
+    const rememberedKey = (() => {
+      const lastId = rememberedBootloaderId ?? lastBootloaderIdRef.current;
+      const key = lastId ? lastId.join("-") : null;
+      return key && DEVICE_PROFILES[key] ? key : null;
+    })();
+    const fallback = demoOptions[0]?.key ?? null;
+    setSelectedDemoKey((prev) => {
+      if (prev && demoOptions.some((opt) => opt.key === prev)) return prev;
+      if (rememberedKey) return rememberedKey;
+      return fallback;
+    });
+  }, [showDemoModal, rememberedBootloaderId, demoOptions]);
+
+  const startDemo = useCallback(async () => {
+    const chosen = demoOptions.find((opt) => opt.key === selectedDemoKey) ?? demoOptions[0];
+    if (!chosen) {
+      setStatus({ state: "error", detail: "No demo devices available." });
       return;
     }
 
     try {
+      setShowDemoModal(false);
       setStatus({ state: "requesting", detail: "Starting demo…" });
       if (clientRef.current) {
         await clientRef.current.disconnect().catch(() => {});
       }
-      const client = new FakeBootloader();
+      const client = new FakeBootloader({ bootloaderId: chosen.bootloaderId });
       clientRef.current = client;
       const info = await client.connect();
       setDemoMode(true);
@@ -338,7 +366,15 @@ export default function KeypadFlasherApp() {
       setDemoMode(false);
       setStatus({ state: "error", detail: String((err as Error).message ?? "Failed to start demo mode.") });
     }
-  }, [demoMode, disconnectClient, applyConnectedDevice]);
+  }, [applyConnectedDevice, demoOptions, selectedDemoKey]);
+
+  const handleDemoToggle = useCallback(async () => {
+    if (demoMode) {
+      await disconnectClient({ state: "idle" });
+      return;
+    }
+    setShowDemoModal(true);
+  }, [demoMode, disconnectClient]);
 
   const handleConnect = useCallback(async () => {
     if (!webUsbAvailable) {
@@ -1033,13 +1069,13 @@ export default function KeypadFlasherApp() {
         {selectedLayout && (
           <>
             {!layoutLedCount && (
-              <div className="status-banner status-warn" style={{ marginTop: "8px" }}>
+              <div className="status-banner status-warn" style={{ marginTop: "10px" }}>
                 <div className="status-title">No LEDs on this device</div>
-                <div className="status-body">This layout has no LEDs mapped, so lighting controls are unavailable.</div>
+                <div className="status-body">This device has no LEDs available, so lighting controls are unavailable.</div>
               </div>
             )}
             {layoutLedCount > 0 && !ledConfig && (
-              <div className="status-banner status-warn" style={{ marginTop: "8px" }}>
+              <div className="status-banner status-warn" style={{ marginTop: "10px" }}>
                 <div className="status-title">Lighting config unavailable</div>
                 <div className="status-body">This device did not provide lighting configuration data.</div>
               </div>
@@ -1076,6 +1112,57 @@ export default function KeypadFlasherApp() {
             onToggleBootloaderChord={updateBootloaderChordMember}
             onError={(detail) => setStatus({ state: "error", detail })}
           />
+        )}
+
+        {showDemoModal && (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (modalPointerDownRef.current) { modalPointerDownRef.current = false; return; }
+              if (e.target === e.currentTarget) setShowDemoModal(false);
+            }}
+          >
+            <div
+              className="modal config-modal demo-modal"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={() => { modalPointerDownRef.current = true; }}
+              onMouseUp={() => { modalPointerDownRef.current = false; }}
+            >
+              <div className="modal-header">
+                <div className="modal-title">Choose a demo device</div>
+                <button className="btn ghost" onClick={() => setShowDemoModal(false)}>Close</button>
+              </div>
+              <div className="modal-body">
+                <p className="muted small">Pick a supported device profile to explore the UI without connecting hardware.</p>
+                {demoOptions.length === 0 ? (
+                  <div className="muted small">No demo devices available.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {demoOptions.map((opt) => (
+                      <label key={opt.key} className={`demo-option${selectedDemoKey === opt.key ? " demo-option-selected" : ""}`}>
+                        <input
+                          type="radio"
+                          name="demo-device"
+                          value={opt.key}
+                          checked={selectedDemoKey === opt.key}
+                          onChange={() => setSelectedDemoKey(opt.key)}
+                        />
+                        <div className="demo-option-body">
+                          <div className="demo-option-name">{opt.name}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setShowDemoModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={startDemo} disabled={!selectedDemoKey || demoOptions.length === 0}>Start demo</button>
+              </div>
+            </div>
+          </div>
         )}
 
         {showLightingModal && selectedLayout && (

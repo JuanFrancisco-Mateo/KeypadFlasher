@@ -658,11 +658,11 @@ export function StepEditor({
         </div>
         {target.type === "encoder" && (
           <div className="muted small">
-            Input: {target.direction.toUpperCase()} {target.direction === "cw"
-              ? "(Clockwise)"
+            Input: {target.direction === "cw"
+              ? "Clockwise"
               : target.direction === "ccw"
-                ? "(Counter-Clockwise)"
-                : "(Press switch)"}
+                ? "Counter-clockwise"
+                : "Press"}
           </div>
         )}
         <div className="modal-body">
