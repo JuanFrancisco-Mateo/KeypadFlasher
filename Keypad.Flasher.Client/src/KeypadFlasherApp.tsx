@@ -124,24 +124,16 @@ export default function KeypadFlasherApp() {
   const normalizeLedConfig = useCallback((layout: DeviceLayoutDto | null, config: LedConfigurationDto | null): LedConfigurationDto | null => {
     const count = ledCountFromLayout(layout);
     if (count <= 0) return null;
-    const coerceLegacy = (input: LedConfigurationDto | null): LedConfigurationDto | null => {
-      if (!input) return null;
-      const legacyMode = (input as any).passiveMode as PassiveLedMode | undefined;
-      const passiveModes: PassiveLedMode[] = Array.isArray(input.passiveModes) && input.passiveModes.length > 0
-        ? [...input.passiveModes]
-        : (legacyMode ? Array.from({ length: count }, () => legacyMode) : []);
-      return {
-        passiveModes,
-        passiveColors: input.passiveColors ?? [],
-        activeModes: input.activeModes ?? [],
-        activeColors: input.activeColors ?? [],
-      };
-    };
-
-    const base = coerceLegacy(config) ?? buildDefaultLedConfig(layout);
+    const base: LedConfigurationDto | null = config ?? buildDefaultLedConfig(layout);
     if (!base) return null;
-    if (base.passiveModes.length === count && base.passiveColors.length === count && base.activeModes.length === count && base.activeColors.length === count) {
-      return base;
+    const normalized: LedConfigurationDto = {
+      passiveModes: base.passiveModes ?? [],
+      passiveColors: base.passiveColors ?? [],
+      activeModes: base.activeModes ?? [],
+      activeColors: base.activeColors ?? [],
+    };
+    if (normalized.passiveModes.length === count && normalized.passiveColors.length === count && normalized.activeModes.length === count && normalized.activeColors.length === count) {
+      return normalized;
     }
     const defaults = buildDefaultLedConfig(layout);
     return defaults;
@@ -489,7 +481,6 @@ export default function KeypadFlasherApp() {
     currentBindings.encoders.forEach((entry) => encoderBindings.set(entry.id, entry));
   }
 
-  const ledCount = ledConfig ? ledConfig.passiveColors.length : 0;
   const layoutLedCount = ledCountFromLayout(selectedLayout);
 
   const openEdit = (target: EditTarget) => {
@@ -577,8 +568,8 @@ export default function KeypadFlasherApp() {
 
   const ledDisplayName = (idx: number): string => {
     const btn = userButtons.find((b) => b.ledIndex === idx);
-    if (btn) return `Key ${btn.id}`;
-    return `LED ${idx}`;
+    if (btn) return `Button ${btn.id + 1}`;
+    return `Unmapped LED ${idx + 1}`;
   };
 
   const closeLightingModal = () => {
@@ -632,9 +623,6 @@ export default function KeypadFlasherApp() {
       return { ...prev, passiveModes };
     });
   };
-
-  const setPassiveColorOff = (idx: number) => setPassiveColor(idx, { r: 0, g: 0, b: 0 });
-
   const setActiveMode = (idx: number, mode: ActiveLedMode) => {
     setDraftLedConfig((prev) => {
       if (!prev || idx < 0 || idx >= prev.activeModes.length) return prev;
@@ -658,13 +646,14 @@ export default function KeypadFlasherApp() {
   const copyLedLighting = (idx: number) => {
     const source = draftLedConfig;
     if (!source || idx < 0 || idx >= source.passiveColors.length || idx >= source.activeModes.length || idx >= source.activeColors.length || idx >= source.passiveModes.length) return;
+    const label = ledDisplayName(idx);
     setCopiedLedLighting({
       passiveMode: source.passiveModes[idx],
       passive: source.passiveColors[idx],
       activeMode: source.activeModes[idx],
       activeColor: source.activeColors[idx],
     });
-    setLightingStatus(`Copied lighting from LED ${idx + 1}. Paste or apply to all.`);
+    setLightingStatus(`Copied lighting from ${label}. Paste or apply to all.`);
   };
 
   const pasteLedLighting = (idx: number) => {
@@ -680,7 +669,7 @@ export default function KeypadFlasherApp() {
       activeColors[idx] = copiedLedLighting.activeColor;
       return { ...prev, passiveModes, passiveColors, activeModes, activeColors };
     });
-    setLightingStatus(`Pasted lighting to LED ${idx + 1}.`);
+    setLightingStatus(`Pasted lighting to ${ledDisplayName(idx)}.`);
   };
 
   const applyLightingToAll = (sourceIdx: number) => {
@@ -698,7 +687,7 @@ export default function KeypadFlasherApp() {
         activeColors: prev.activeColors.map(() => activeColor),
       };
     });
-    setLightingStatus(`Applied lighting from LED ${sourceIdx + 1} to all.`);
+    setLightingStatus(`Applied lighting from ${ledDisplayName(sourceIdx)} to all.`);
   };
 
   const handleEditorSave = (binding: HidBindingDto) => {
@@ -948,7 +937,13 @@ export default function KeypadFlasherApp() {
           <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) closeLightingModal(); }}>
             <div className="modal lighting-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <div className="modal-title">Lighting</div>
+                {(() => {
+                  const target = focusLedIndex != null ? focusLedIndex : 0;
+                  const maxIdx = draftLedConfig?.passiveColors.length ?? 0;
+                  const clamped = maxIdx > 0 ? Math.min(Math.max(target, 0), maxIdx - 1) : 0;
+                  const title = maxIdx > 0 ? `Edit ${ledDisplayName(clamped)} Lighting` : "Lighting";
+                  return <div className="modal-title">{title}</div>;
+                })()}
               </div>
               <div className="modal-body">
                 {layoutLedCount === 0 || !draftLedConfig ? (
@@ -963,55 +958,61 @@ export default function KeypadFlasherApp() {
                       if (target < 0 || target >= modalLedCount || target >= passiveModeCount) return <div className="muted small">LED out of range.</div>;
                       const passiveMode = activeConfig.passiveModes[target];
                       const modalPassiveStaticEnabled = passiveMode === "Static";
+                      const modalActiveSolidEnabled = activeConfig.activeModes[target] === "Solid";
                       return (
-                        <div className="led-grid" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                          <div id={`led-card-${target}`} className="card subtle" style={{ padding: "12px" }}>
-                            <div className="card-title" style={{ marginBottom: "6px" }}>{ledDisplayName(target)}</div>
-                            <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                <span className="muted small">Passive</span>
-                                <select
-                                  value={passiveMode}
-                                  onChange={(e) => setPassiveModeForLed(target, e.target.value as PassiveLedMode)}
-                                >
-                                  <option value="Off">Off</option>
-                                  <option value="Rainbow">Rainbow</option>
-                                  <option value="Static">Static</option>
-                                </select>
+                        <div id={`led-card-${target}`} className="led-grid" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          <div className="muted small" style={{ marginBottom: "8px" }}>
+                            Set the lighting modes and colors for this key.
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                              <span className="muted small" style={{ minWidth: "56px" }}>Passive</span>
+                              <select
+                                value={passiveMode}
+                                onChange={(e) => setPassiveModeForLed(target, e.target.value as PassiveLedMode)}
+                              >
+                                <option value="Off">Off</option>
+                                <option value="Rainbow">Rainbow</option>
+                                <option value="Static">Static</option>
+                              </select>
+                              {modalPassiveStaticEnabled && (
+                                <>
+                                  <input
+                                    type="color"
+                                    value={colorToHex(activeConfig.passiveColors[target])}
+                                    onChange={(e) => setPassiveColor(target, hexToColor(e.target.value))}
+                                  />
+                                </>
+                              )}
+                              <div className="muted small" style={{ width: "100%" }}>Passive lighting shows when the key is idle.</div>
+                            </div>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                              <span className="muted small" style={{ minWidth: "56px" }}>Active</span>
+                              <select
+                                value={activeConfig.activeModes[target]}
+                                onChange={(e) => setActiveMode(target, e.target.value as ActiveLedMode)}
+                              >
+                                <option value="Off">Off</option>
+                                <option value="Solid">Solid</option>
+                              </select>
+                              {modalActiveSolidEnabled && (
                                 <input
                                   type="color"
-                                  disabled={!modalPassiveStaticEnabled}
-                                  value={colorToHex(activeConfig.passiveColors[target])}
-                                  onChange={(e) => setPassiveColor(target, hexToColor(e.target.value))}
-                                />
-                                <button className="btn ghost" style={{ minHeight: "38px" }} disabled={!modalPassiveStaticEnabled} onClick={() => setPassiveColorOff(target)}>Off</button>
-                              </div>
-                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                <span className="muted small">Active</span>
-                                <select
-                                  value={activeConfig.activeModes[target]}
-                                  onChange={(e) => setActiveMode(target, e.target.value as ActiveLedMode)}
-                                >
-                                  <option value="Off">Off</option>
-                                  <option value="Solid">Solid</option>
-                                </select>
-                                <input
-                                  type="color"
-                                  disabled={activeConfig.activeModes[target] !== "Solid"}
                                   value={colorToHex(activeConfig.activeColors[target])}
                                   onChange={(e) => setActiveColor(target, hexToColor(e.target.value))}
                                 />
-                              </div>
+                              )}
+                              <div className="muted small" style={{ width: "100%" }}>Active lighting shows while the key is pressed.</div>
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
-                              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
-                                <button className="btn" onClick={() => copyLedLighting(target)}>Copy</button>
-                                <button className="btn" disabled={!copiedLedLighting} onClick={() => pasteLedLighting(target)}>Paste</button>
-                                <button className="btn" onClick={() => applyLightingToAll(target)}>Apply to all</button>
-                              </div>
-                              <div style={{ minHeight: "18px", textAlign: "right" }}>
-                                <span className="muted small">{lightingStatus}</span>
-                              </div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
+                            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+                              <button className="btn" onClick={() => copyLedLighting(target)}>Copy</button>
+                              <button className="btn" disabled={!copiedLedLighting} onClick={() => pasteLedLighting(target)}>Paste</button>
+                              <button className="btn" onClick={() => applyLightingToAll(target)}>Apply to all</button>
+                            </div>
+                            <div style={{ minHeight: "18px", textAlign: "right" }}>
+                              <span className="muted small">{lightingStatus}</span>
                             </div>
                           </div>
                         </div>
