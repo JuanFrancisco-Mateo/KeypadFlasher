@@ -417,20 +417,19 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-    z-index: 2000;
 }
-
 .modal {
-    width: min(520px, 100%);
-    max-height: 90vh;
-    background: var(--panel-bg);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 14px;
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    box-shadow: var(--shadow-strong);
+    width: min(900px, 95vw);
+    max-height: 90vh;
     padding: 16px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-shadow: var(--shadow-strong);
 }
 
 .modal-header {
@@ -442,6 +441,79 @@
 
 .modal-title {
     font-weight: 700;
+}
+
+.step-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.step-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.step-card-selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(0, 0, 0, 0.18);
+    background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.12)), var(--subtle-bg);
+    position: relative;
+}
+
+.step-card-selected::before {
+    content: "";
+    position: absolute;
+    inset: 6px auto 6px -4px;
+    width: 6px;
+    border-radius: 10px;
+    background: var(--accent);
+}
+
+.step-card-selected::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 10px;
+    background: rgba( var(--accent-rgb, 63, 133, 255), 0.05);
+    pointer-events: none;
+}
+
+.step-card-dragging {
+    opacity: 0.7;
+}
+
+.step-card-drop-target {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+}
+
+.step-card-drag-group {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+}
+
+.step-card-highlight {
+    animation: step-highlight 460ms ease;
+}
+
+.step-card-removing {
+    pointer-events: none;
+    max-height: 1200px;
+    animation: step-remove 220ms ease forwards;
 }
 
 .modal-body {
@@ -487,6 +559,27 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 0 0 auto;
+}
+
+.steps-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: min(70vh, 640px);
+    min-height: 260px;
+}
+
+.steps-scroll {
+    overflow-y: auto;
+    padding-right: 4px;
+    max-height: calc(min(70vh, 640px) - 120px);
+    flex: 1 1 auto;
+    min-height: 120px;
+}
+
+.step-card {
+    flex: 0 0 auto;
 }
 
 .step-card {
@@ -495,6 +588,48 @@
     padding: 10px 12px;
     background: var(--subtle-bg);
     box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.step-card-fresh {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+    animation: step-in 240ms ease forwards;
+}
+
+.step-card-collapsed {
+    background: var(--card-bg);
+    padding-bottom: 12px;
+}
+
+.step-card-collapsed .step-header {
+    margin-bottom: 0;
+}
+
+.step-body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    padding-top: 0;
+    margin-top: 0;
+    pointer-events: none;
+    transition: max-height 180ms ease, opacity 150ms ease, transform 150ms ease, padding-top 150ms ease, margin-top 150ms ease;
+}
+
+.step-body.expanded {
+    max-height: 1200px;
+    opacity: 1;
+    transform: translateY(0);
+    padding-top: 6px;
+    margin-top: 2px;
+    pointer-events: auto;
+    transition: max-height 160ms ease, opacity 140ms ease, transform 140ms ease, padding-top 140ms ease, margin-top 140ms ease;
 }
 
 .step-card-pause {
@@ -508,6 +643,12 @@
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 6px;
+}
+
+.step-header-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .step-title {
@@ -547,7 +688,15 @@
 
 .step-controls {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    flex-wrap: nowrap;
+    margin-bottom: 8px;
+}
+
+.step-control-buttons {
+    display: flex;
     gap: 8px;
     flex-wrap: wrap;
 }
@@ -562,6 +711,23 @@
 .btn.ghost.active {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.step-dropzone {
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.8;
+    background: var(--subtle-bg);
+    font-size: 13px;
+}
+
+.step-dropzone.drop-target {
+    border-color: var(--accent);
+    color: var(--accent);
+    opacity: 1;
 }
 
 .pill.small {
@@ -651,4 +817,32 @@
 
 .gap-spacer {
     margin-top: 12px;
+}
+
+@keyframes step-highlight {
+    0% { box-shadow: 0 0 0 0 var(--accent); transform: translateY(-2px); }
+    60% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); transform: translateY(0); }
+    100% { box-shadow: var(--shadow); transform: none; }
+}
+
+@keyframes step-remove {
+    to {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        opacity: 0;
+        transform: translateY(-6px) scale(0.97);
+        box-shadow: none;
+    }
+}
+
+@keyframes step-in {
+    to {
+        max-height: 1200px;
+        padding-top: 10px;
+        padding-bottom: 12px;
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
