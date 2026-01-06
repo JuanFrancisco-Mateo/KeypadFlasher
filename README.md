@@ -2,6 +2,16 @@
 
 This project contains custom firmware compatible with a number of different CH55x based programmable keypads found on sites like Aliexpress and Amazon.
 
+## TODO
+
+This project is work in progress, what's left to do:
+- Handle / fix passive disconnections from CH55x bootloader during inactivity
+- Handle special keys in the input box e.g. Enter, Backspace, etc.
+- Add media keys to the function list
+- Add support for copy/pasting/reordering steps
+- Add support for saving/loading configuration to local storage or files
+- Build the adapter to easily enter bootloader mode without opening the device up or making the contraption manually
+
 ## Usage
 
 Don't have a keypad yet? See the [supported devices](#supported-devices) section for some compatible options.

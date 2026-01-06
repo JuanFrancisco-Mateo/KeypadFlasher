@@ -71,7 +71,11 @@ static void hid_run_key_sequence(hid_key_sequence_t sequence, hid_trigger_mode_t
     case HID_STEP_FUNCTION:
       if (step->functionPointer)
       {
-        step->functionPointer(mode);
+        uint8_t times = step->function_value == 0 ? 1 : step->function_value;
+        while (times--)
+        {
+          step->functionPointer(mode);
+        }
       }
       if (step->gap_ms > 0)
       {

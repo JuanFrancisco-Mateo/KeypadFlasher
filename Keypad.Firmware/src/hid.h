@@ -45,6 +45,7 @@ typedef struct
   uint8_t hold_ms;   // how long to hold key+mods
   uint8_t gap_ms;    // delay after releasing before next step or gap after function/mouse
   void (*functionPointer)(hid_trigger_mode_t mode);
+  uint8_t function_value;
   hid_pointer_event_type_t pointer_type;
   uint8_t pointer_value;
 } hid_key_step_t;

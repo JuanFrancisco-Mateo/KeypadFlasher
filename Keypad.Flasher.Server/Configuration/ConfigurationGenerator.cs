@@ -194,11 +194,25 @@ namespace Keypad.Flasher.Server.Configuration
                 var keycodeLiteral = step.Kind == HidStepKind.Key
                     ? ToCharLiteral((char)step.Keycode)
                     : step.Keycode.ToString();
-                var pointerType = step.Kind == HidStepKind.Mouse ? step.PointerType : (byte)0;
-                var pointerTypeLiteral = pointerType.ToString();
-                var pointerValue = step.Kind == HidStepKind.Mouse
-                    ? (pointerType >= 4 && pointerType <= 5 ? 0 : step.PointerValue)
-                    : 0;
+                var pointerType = step.Kind == HidStepKind.Mouse ? step.PointerType : HidPointerType.MoveUp;
+                var pointerTypeLiteral = ((byte)pointerType).ToString();
+                var pointerValue = (byte)0;
+                if (step.Kind == HidStepKind.Mouse)
+                {
+                    if (pointerType is HidPointerType.LeftClick or HidPointerType.RightClick)
+                    {
+                        pointerValue = 0;
+                    }
+                    else if (pointerType is HidPointerType.ScrollUp or HidPointerType.ScrollDown)
+                    {
+                        pointerValue = step.PointerValue == 0 ? (byte)1 : step.PointerValue;
+                    }
+                    else
+                    {
+                        pointerValue = step.PointerValue == 0 ? (byte)100 : step.PointerValue;
+                    }
+                }
+                var functionValue = step.Kind == HidStepKind.Function ? (step.FunctionValue == 0 ? (byte)1 : step.FunctionValue) : (byte)1;
 
                 AppendLine(sb, indentLevel + 2, "{");
                 AppendLine(sb, indentLevel + 3, $".kind = {kindLiteral},");
@@ -206,6 +220,7 @@ namespace Keypad.Flasher.Server.Configuration
                 AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
                 AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
                 AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs},");
+                AppendLine(sb, indentLevel + 3, $".function_value = {functionValue},");
                 AppendLine(sb, indentLevel + 3, $".pointer_type = {pointerTypeLiteral},");
                 AppendLine(sb, indentLevel + 3, $".pointer_value = {pointerValue},");
                 AppendLine(sb, indentLevel + 3, $".functionPointer = {functionPointer}");

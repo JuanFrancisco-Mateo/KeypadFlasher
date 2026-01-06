@@ -18,27 +18,40 @@ namespace Keypad.Flasher.Server.Configuration
         Mouse
     }
 
+    public enum HidPointerType : byte
+    {
+        MoveUp = 0,
+        MoveDown = 1,
+        MoveLeft = 2,
+        MoveRight = 3,
+        LeftClick = 4,
+        RightClick = 5,
+        ScrollUp = 6,
+        ScrollDown = 7
+    }
+
     public sealed record HidStep(
         HidStepKind Kind,
         byte Keycode,
         byte Modifiers,
         byte HoldMs,
         byte GapMs,
-        byte PointerType,
+        byte FunctionValue,
+        HidPointerType PointerType,
         byte PointerValue,
         string? FunctionPointer = null)
     {
         public static HidStep Key(byte keycode, byte modifiers = 0, byte holdMs = 10, byte gapMs = 10)
-            => new(HidStepKind.Key, keycode, modifiers, holdMs, gapMs, 0, 0, null);
+            => new(HidStepKind.Key, keycode, modifiers, holdMs, gapMs, 1, 0, 0, null);
 
         public static HidStep Pause(byte gapMs)
-            => new(HidStepKind.Pause, 0, 0, 0, gapMs, 0, 0, null);
+            => new(HidStepKind.Pause, 0, 0, 0, gapMs, 1, 0, 0, null);
 
-        public static HidStep Function(string functionPointer, byte gapMs = 0)
-            => new(HidStepKind.Function, 0, 0, 0, gapMs, 0, 0, functionPointer);
+        public static HidStep Function(string functionPointer, byte gapMs = 0, byte functionValue = 1)
+            => new(HidStepKind.Function, 0, 0, 0, gapMs, functionValue, 0, 0, functionPointer);
 
-        public static HidStep Mouse(byte pointerType, byte pointerValue, byte gapMs = 0)
-            => new(HidStepKind.Mouse, 0, 0, 0, gapMs, pointerType, pointerValue, null);
+        public static HidStep Mouse(HidPointerType pointerType, byte pointerValue, byte gapMs = 0)
+            => new(HidStepKind.Mouse, 0, 0, 0, gapMs, 1, pointerType, pointerValue, null);
     }
 
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]

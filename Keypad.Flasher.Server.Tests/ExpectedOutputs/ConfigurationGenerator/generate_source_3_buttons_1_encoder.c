@@ -18,6 +18,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 5,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     },
                     {
@@ -26,6 +29,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 5,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     },
                     {
@@ -34,6 +40,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 5,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     },
                     {
@@ -42,6 +51,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 5,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     },
                     {
@@ -50,6 +62,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 5,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     }
                 },
@@ -73,6 +88,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 0,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     }
                 },
@@ -96,6 +114,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 0,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     }
                 },
@@ -119,6 +140,9 @@ const button_binding_t button_bindings[] = {
                         .modifiers = 0,
                         .hold_ms = 10,
                         .gap_ms = 10,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = 0
                     }
                 },
@@ -144,6 +168,9 @@ const encoder_binding_t encoder_bindings[] = {
                         .modifiers = 0,
                         .hold_ms = 0,
                         .gap_ms = 0,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = hid_consumer_volume_up
                     }
                 },
@@ -160,6 +187,9 @@ const encoder_binding_t encoder_bindings[] = {
                         .modifiers = 0,
                         .hold_ms = 0,
                         .gap_ms = 0,
+                        .function_value = 1,
+                        .pointer_type = 0,
+                        .pointer_value = 0,
                         .functionPointer = hid_consumer_volume_down
                     }
                 },

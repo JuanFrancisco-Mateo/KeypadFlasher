@@ -1,3 +1,16 @@
+export const HID_POINTER_TYPE = {
+  MoveUp: 0,
+  MoveDown: 1,
+  MoveLeft: 2,
+  MoveRight: 3,
+  LeftClick: 4,
+  RightClick: 5,
+  ScrollUp: 6,
+  ScrollDown: 7,
+} as const;
+
+export type HidPointerType = (typeof HID_POINTER_TYPE)[keyof typeof HID_POINTER_TYPE];
+
 export type HidStepDto =
   | {
       kind: "Key";
@@ -5,13 +18,13 @@ export type HidStepDto =
       modifiers: number; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
       holdMs: number;
       gapMs: number;
-      pointerType?: number;
+      pointerType?: HidPointerType;
       pointerValue?: number;
       functionPointer?: undefined;
     }
-  | { kind: "Pause"; gapMs: number; pointerType?: number; pointerValue?: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: undefined }
-  | { kind: "Function"; functionPointer: string; gapMs: number; keycode?: number; modifiers?: number; holdMs?: number; pointerType?: number; pointerValue?: number }
-  | { kind: "Mouse"; pointerType: number; pointerValue: number; gapMs: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: string };
+  | { kind: "Pause"; gapMs: number; pointerType?: HidPointerType; pointerValue?: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: undefined }
+  | { kind: "Function"; functionPointer: string; gapMs: number; functionValue?: number; keycode?: number; modifiers?: number; holdMs?: number; pointerType?: HidPointerType; pointerValue?: number }
+  | { kind: "Mouse"; pointerType: HidPointerType; pointerValue: number; gapMs: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: string };
 
 export type HidBindingDto = { type: "Sequence"; steps: HidStepDto[] };
 
@@ -96,7 +109,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
         { id: 2, binding: seq("c", 0) },
       ],
       encoders: [
-        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: seq("enter", 5) },
+        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: { type: "Sequence", steps: [key("E", 2), key("n", 0), key("t", 0), key("e", 0), key("r", 0)] } },
       ],
     },
   },
@@ -152,7 +165,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
         { id: 5, binding: seq("6", 0) },
       ],
       encoders: [
-        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: seq("Enter", 0) },
+        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: { type: "Sequence", steps: [key("E", 2), key("n", 0), key("t", 0), key("e", 0), key("r", 0)] } },
       ],
     },
   },

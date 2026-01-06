@@ -1,5 +1,5 @@
-// This file is replaced at runtime by the configuration generator tool in the backend
-// It exists only to test the compilation of the firmware with a sample configuration
+// Sample configuration used to keep firmware buildable in the repo.
+// At runtime this file is replaced by the backend configuration generator.
 
 #pragma once
 
@@ -10,5 +10,6 @@
 #define CONFIGURATION_DEBUG_MODE 0
 
 #define PIN_NEO P34
-#define NEO_COUNT 2
+#define NEO_COUNT 3
 #define NEO_GRB
+#define NEO_REVERSED 0
