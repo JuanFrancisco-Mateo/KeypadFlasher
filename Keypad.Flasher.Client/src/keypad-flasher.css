@@ -79,6 +79,15 @@
     border-color: var(--accent);
 }
 
+.btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+}
+
 .btn-demo {
     background: var(--button-bg);
     border-color: var(--button-border);

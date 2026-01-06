@@ -1,0 +1,70 @@
+import type { BindingProfileDto, DeviceLayoutDto } from "./keypad-configs";
+
+const STORAGE_PREFIX = "keypad-flasher";
+const LAST_DEVICE_KEY = `${STORAGE_PREFIX}:last-device`;
+const storageAvailable = typeof window !== "undefined" && !!window.localStorage;
+
+export type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null };
+
+export const cloneLayout = (layout: DeviceLayoutDto): DeviceLayoutDto => ({
+  ...layout,
+  buttons: layout.buttons.map((b) => ({ ...b })),
+  encoders: layout.encoders.map((e) => ({ ...e, press: e.press ? { ...e.press } : undefined })),
+});
+
+export const loadStoredConfig = (bootloaderId: number[]): StoredConfig | null => {
+  if (!storageAvailable) return null;
+  const key = `${STORAGE_PREFIX}:${bootloaderId.join("-")}`;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredConfig;
+    if (parsed && typeof parsed === "object") {
+      return {
+        bindings: parsed.bindings ?? null,
+        layout: parsed.layout ? cloneLayout(parsed.layout) : null,
+      };
+    }
+  } catch {
+    // ignore parse/storage errors
+  }
+  return null;
+};
+
+export const saveStoredConfig = (bootloaderId: number[], config: StoredConfig) => {
+  if (!storageAvailable) return;
+  const key = `${STORAGE_PREFIX}:${bootloaderId.join("-")}`;
+  try {
+    if (config.bindings || config.layout) {
+      window.localStorage.setItem(key, JSON.stringify(config));
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore storage errors
+  }
+};
+
+export const loadLastBootloaderId = (): number[] | null => {
+  if (!storageAvailable) return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_DEVICE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((n) => typeof n === "number")) {
+      return parsed as number[];
+    }
+  } catch {
+    // ignore parse/storage errors
+  }
+  return null;
+};
+
+export const saveLastBootloaderId = (bootloaderId: number[]) => {
+  if (!storageAvailable) return;
+  try {
+    window.localStorage.setItem(LAST_DEVICE_KEY, JSON.stringify(bootloaderId));
+  } catch {
+    // ignore storage errors
+  }
+};
