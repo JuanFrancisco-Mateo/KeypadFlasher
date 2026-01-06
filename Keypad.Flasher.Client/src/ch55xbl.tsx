@@ -2,7 +2,9 @@
 import { useCallback, useRef, useState, useEffect, useLayoutEffect } from "react";
 import {
   CH55xBootloader,
+  FakeBootloader,
   parseIntelHexBrowser,
+  type BootloaderClient,
   type ConnectedInfo,
   type Progress,
   readFileAsText,
@@ -338,6 +340,7 @@ export default function CH55xBootloaderMinimal() {
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [connectedInfo, setConnectedInfo] = useState<ConnectedInfo | null>(null);
   const [progress, setProgress] = useState<Progress>({ phase: "", current: 0, total: 0 });
+  const [demoMode, setDemoMode] = useState<boolean>(false);
   const [devMode, setDevMode] = useState<boolean>(false);
   const [debugFirmware, setDebugFirmware] = useState<boolean>(false);
   const [selectedProfile, setSelectedProfile] = useState<KnownDeviceProfile | null>(null);
@@ -361,7 +364,7 @@ export default function CH55xBootloaderMinimal() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hiddenKeyInputRef = useRef<HTMLInputElement | null>(null);
-  const clientRef = useRef<CH55xBootloader | null>(null);
+  const clientRef = useRef<BootloaderClient | null>(null);
   const lastBootloaderIdRef = useRef<number[] | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const removeTimerRef = useRef<Map<string, number>>(new Map());
@@ -433,6 +436,57 @@ export default function CH55xBootloaderMinimal() {
     setCurrentBindings(nextBindings);
   }, []);
 
+  const applyConnectedDevice = useCallback((info: ConnectedInfo, options: { source: "real" | "demo"; persistLastId: boolean }) => {
+    const previousId = lastBootloaderIdRef.current;
+    const sameDevice = sameBootloaderId(previousId, info.id);
+
+    if (options.persistLastId) {
+      lastBootloaderIdRef.current = info.id;
+    }
+
+    setConnectedInfo(info);
+    const profile = findProfileForBootloaderId(info.id);
+    setSelectedProfile(profile);
+
+    if (options.persistLastId) {
+      setRememberedBootloaderId(info.id);
+      saveLastBootloaderId(info.id);
+    }
+
+    const stored = loadStoredConfig(info.id);
+    if (!sameDevice || !selectedLayout) {
+      const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
+      setSelectedLayout(nextLayout);
+    }
+
+    const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+    if (!sameDevice || !currentBindings) {
+      setCurrentBindings(nextBindings);
+    }
+
+    const detail = profile
+      ? `${options.source === "demo" ? "Demo: " : ""}${profile.name}`
+      : (options.source === "demo" ? "Demo device" : undefined);
+    setStatus(profile ? { state: "connectedKnown", detail } : { state: "connectedUnknown", detail });
+  }, [currentBindings, selectedLayout]);
+
+  const restoreSavedConfig = useCallback(() => {
+    const id = rememberedBootloaderId ?? lastBootloaderIdRef.current;
+    if (!id) {
+      setSelectedProfile(null);
+      setSelectedLayout(null);
+      setCurrentBindings(null);
+      return;
+    }
+    const profile = findProfileForBootloaderId(id);
+    setSelectedProfile(profile);
+    const stored = loadStoredConfig(id);
+    const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
+    const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+    setSelectedLayout(nextLayout);
+    setCurrentBindings(nextBindings);
+  }, [rememberedBootloaderId]);
+
   const disconnectClient = useCallback(async (nextStatus?: Status, reboot?: boolean) => {
     const client = clientRef.current;
     if (client) {
@@ -442,10 +496,12 @@ export default function CH55xBootloaderMinimal() {
       await client.disconnect().catch(() => {});
     }
     clientRef.current = null;
+    setDemoMode(false);
     setConnectedInfo(null);
     setProgress({ phase: "", current: 0, total: 0 });
+    restoreSavedConfig();
     if (nextStatus) setStatus(nextStatus);
-  }, []);
+  }, [restoreSavedConfig]);
 
   const handlePassiveDisconnect = useCallback(async (detail?: string) => {
     await disconnectClient({ state: "deviceLost", detail: detail ?? "Device disconnected. Reconnect to continue." });
@@ -480,6 +536,29 @@ export default function CH55xBootloaderMinimal() {
     };
   }, [capturingStepIndex]);
 
+  const handleDemoToggle = useCallback(async () => {
+    if (demoMode) {
+      await disconnectClient({ state: "idle" });
+      return;
+    }
+
+    try {
+      setStatus({ state: "requesting", detail: "Starting demo…" });
+      if (clientRef.current) {
+        await clientRef.current.disconnect().catch(() => {});
+      }
+      const client = new FakeBootloader();
+      clientRef.current = client;
+      const info = await client.connect();
+      setDemoMode(true);
+      applyConnectedDevice(info, { source: "demo", persistLastId: false });
+    } catch (err) {
+      clientRef.current = null;
+      setDemoMode(false);
+      setStatus({ state: "error", detail: String((err as Error).message ?? "Failed to start demo mode.") });
+    }
+  }, [demoMode, disconnectClient, applyConnectedDevice]);
+
   const handleConnect = useCallback(async () => {
     if (!webUsbAvailable) {
       setStatus({ state: "error", detail: "WebUSB not available in this browser." });
@@ -487,36 +566,22 @@ export default function CH55xBootloaderMinimal() {
     }
     try {
       setStatus({ state: "requesting" });
-      const client = clientRef.current ?? new CH55xBootloader();
+      if (demoMode && clientRef.current) {
+        await clientRef.current.disconnect().catch(() => {});
+      }
+
+      const existing = clientRef.current;
+      const client = existing instanceof CH55xBootloader ? existing : new CH55xBootloader();
       clientRef.current = client;
+
+      setDemoMode(false);
       const info = await client.connect();
-      const previousId = lastBootloaderIdRef.current;
-      const sameDevice = sameBootloaderId(previousId, info.id);
-      lastBootloaderIdRef.current = info.id;
-      setConnectedInfo(info);
-      const profile = findProfileForBootloaderId(info.id);
-      setRememberedBootloaderId(info.id);
-      saveLastBootloaderId(info.id);
-      setSelectedProfile(profile);
-      const stored = loadStoredConfig(info.id);
-      if (!sameDevice || !selectedLayout) {
-        const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
-        setSelectedLayout(nextLayout);
-      }
-      const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
-      if (!sameDevice || !currentBindings) {
-        setCurrentBindings(nextBindings);
-      }
-      if (profile) {
-        setStatus({ state: "connectedKnown", detail: profile.name });
-      } else {
-        setStatus({ state: "connectedUnknown" });
-      }
+      applyConnectedDevice(info, { source: "real", persistLastId: true });
     } catch (e) {
       const msg = normalizeUsbErrorMessage(String((e as Error).message ?? e));
       setStatus({ state: "error", detail: msg });
     }
-  }, [webUsbAvailable, selectedLayout, currentBindings]);
+  }, [webUsbAvailable, demoMode, applyConnectedDevice]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnectClient({ state: "idle" }, true);
@@ -542,10 +607,12 @@ export default function CH55xBootloaderMinimal() {
   }, [disconnectClient]);
 
   useEffect(() => {
-    const targetId = connectedInfo?.id ?? rememberedBootloaderId;
+    if (demoMode) return;
+    if (connectedInfo) return; // avoid overwriting saved presets while live-connected
+    const targetId = rememberedBootloaderId;
     if (!targetId) return;
     saveStoredConfig(targetId, { bindings: currentBindings, layout: selectedLayout });
-  }, [connectedInfo, rememberedBootloaderId, currentBindings, selectedLayout]);
+  }, [connectedInfo, rememberedBootloaderId, currentBindings, selectedLayout, demoMode]);
 
   useEffect(() => {
     if (!webUsbAvailable || typeof navigator === "undefined" || !navigator.usb) return;
@@ -563,6 +630,7 @@ export default function CH55xBootloaderMinimal() {
   }, [webUsbAvailable, handlePassiveDisconnect]);
 
   useEffect(() => {
+    if (demoMode) return;
     if (!connectedInfo || !clientRef.current) return;
     if (status.state === "flashing" || status.state === "compiling" || status.state === "requesting") return;
     let cancelled = false;
@@ -579,7 +647,7 @@ export default function CH55xBootloaderMinimal() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [connectedInfo, status.state, handlePassiveDisconnect]);
+  }, [connectedInfo, status.state, handlePassiveDisconnect, demoMode]);
 
   const handlePickFile = useCallback(() => {
     if (!clientRef.current) {
@@ -1307,6 +1375,16 @@ export default function CH55xBootloaderMinimal() {
 
         <div className="actions">
           <button onClick={handleConnect} className="btn">Connect</button>
+          {!demoMode && (
+            <button
+              onClick={handleDemoToggle}
+              className="btn btn-demo"
+              disabled={Boolean(connectedInfo)}
+              title="Start demo mode to explore the UI without connecting a real device."
+            >
+              Start Demo
+            </button>
+          )}
           {connectedInfo && (
             <button onClick={handleDisconnect} className="btn">Disconnect</button>
           )}
@@ -1355,6 +1433,7 @@ export default function CH55xBootloaderMinimal() {
             <div className="detected-card">
               <div className="detected-header">
                 <span className="pill">Detected device</span>
+                {demoMode && <span className="pill pill-demo">Demo</span>}
                 {!selectedProfile && <span className="pill pill-warn">Unknown</span>}
               </div>
               <div className="detected-name">{selectedProfile?.name ?? "Unknown device"}</div>

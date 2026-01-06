@@ -16,6 +16,15 @@ export type ConnectedInfo = { version: string; id: number[]; deviceIdHex: string
 export type Progress = { phase: "" | "Writing" | "Verifying"; current: number; total: number };
 export type ProgressCb = (p: Progress) => void;
 
+export interface BootloaderClient {
+  connect(): Promise<ConnectedInfo>;
+  disconnect(): Promise<void>;
+  flashBinary(hexBytes: Uint8Array, onProgress?: ProgressCb): Promise<void>;
+  getConnectedDevice(): USBDevice | null;
+  ping(): Promise<void>;
+  runApplication(): Promise<void>;
+}
+
 // ===== Constants =====
 const VENDOR_ID = 0x4348;
 const PRODUCT_ID = 0x55e0;
@@ -155,7 +164,7 @@ export function parseIntelHexBrowser(data: string, bufferSize: number): {
 }
 
 // ===== Core class =====
-export class CH55xBootloader {
+export class CH55xBootloader implements BootloaderClient {
   public uploadReady = false;
   public bootloaderDeviceID: number | null = null;
   private device: USBDevice | null = null;
@@ -389,6 +398,68 @@ export class CH55xBootloader {
       this.bootloaderDeviceID = null;
       this.bootloaderMask = new Uint8Array(8);
     }
+  }
+}
+
+// ===== Demo/fake bootloader for UI previews =====
+const DEMO_BOOTLOADER_ID = [126, 80, 44, 189];
+const DEMO_DEVICE_ID_HEX = "0xd3f0";
+const DEMO_VERSION = "9.9.9";
+const DEMO_STEPS = 120;
+const DEMO_STEP_DELAY_MS = 3;
+
+export class FakeBootloader implements BootloaderClient {
+  private connected = false;
+  private readonly bootloaderId: number[];
+  private readonly stepDelayMs: number;
+
+  constructor(opts: { bootloaderId?: number[]; stepDelayMs?: number } = {}) {
+    this.bootloaderId = opts.bootloaderId ?? DEMO_BOOTLOADER_ID;
+    this.stepDelayMs = opts.stepDelayMs ?? DEMO_STEP_DELAY_MS;
+  }
+
+  private ensureConnected() {
+    if (!this.connected) throw new Error("Demo bootloader not connected.");
+  }
+
+  async connect(): Promise<ConnectedInfo> {
+    this.connected = true;
+    return { version: DEMO_VERSION, id: [...this.bootloaderId], deviceIdHex: DEMO_DEVICE_ID_HEX };
+  }
+
+  async disconnect(): Promise<void> {
+    this.connected = false;
+  }
+
+  getConnectedDevice(): USBDevice | null {
+    return null;
+  }
+
+  async ping(): Promise<void> {
+    this.ensureConnected();
+  }
+
+  async runApplication(): Promise<void> {
+    this.connected = false;
+  }
+
+  async flashBinary(_hexBytes: Uint8Array, onProgress?: ProgressCb): Promise<void> {
+    this.ensureConnected();
+
+    const writeTotal = DEMO_STEPS;
+    onProgress?.({ phase: "Writing", current: 0, total: writeTotal });
+    for (let i = 0; i < writeTotal; i += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, this.stepDelayMs));
+      onProgress?.({ phase: "Writing", current: i + 1, total: writeTotal });
+    }
+
+    onProgress?.({ phase: "Verifying", current: 0, total: writeTotal });
+    for (let i = 0; i < writeTotal; i += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, this.stepDelayMs));
+      onProgress?.({ phase: "Verifying", current: i + 1, total: writeTotal });
+    }
+
+    onProgress?.({ phase: "", current: 0, total: 0 });
   }
 }
 

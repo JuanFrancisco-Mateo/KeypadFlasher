@@ -79,6 +79,17 @@
     border-color: var(--accent);
 }
 
+.btn-demo {
+    background: var(--button-bg);
+    border-color: var(--button-border);
+    color: var(--button-text);
+    box-shadow: var(--button-shadow);
+}
+
+.btn-demo:hover:not(:disabled) {
+    box-shadow: var(--button-shadow-strong);
+}
+
 .panel {
     padding: 16px;
     border-radius: 16px;
@@ -242,6 +253,12 @@
 .pill-warn {
     background: var(--pill-warn-bg);
     color: var(--pill-warn-text);
+}
+
+.pill-demo {
+    background: #9a3412;
+    color: #fff7ed;
+    border: 1px solid #ea580c;
 }
 
 .detected-name {
