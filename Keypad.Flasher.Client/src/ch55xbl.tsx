@@ -8,9 +8,15 @@ import {
   readFileAsText,
   normalizeUsbErrorMessage,
 } from "./lib/ch55x-bootloader";
-import { findConfigForBootloaderId } from "./lib/keypad-configs";
-import type { KnownDeviceConfig } from "./lib/keypad-configs";
+import { findProfileForBootloaderId } from "./lib/keypad-configs";
+import type { BindingProfileDto, DeviceLayoutDto, KnownDeviceProfile } from "./lib/keypad-configs";
 import "./ch55xbl.css";
+
+type FirmwareRequestBody = {
+  layout: DeviceLayoutDto | null;
+  bindingProfile: BindingProfileDto | null;
+  debug: boolean;
+};
 
 type StatusState =
   | "idle"
@@ -35,7 +41,9 @@ export default function CH55xBootloaderMinimal() {
   const [progress, setProgress] = useState<Progress>({ phase: "", current: 0, total: 0 });
   const [devMode, setDevMode] = useState<boolean>(false);
   const [debugFirmware, setDebugFirmware] = useState<boolean>(false);
-  const [selectedConfig, setSelectedConfig] = useState<KnownDeviceConfig | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<KnownDeviceProfile | null>(null);
+  const [currentBindings, setCurrentBindings] = useState<BindingProfileDto | null>(null);
+  const [selectedLayout, setSelectedLayout] = useState<DeviceLayoutDto | null>(null);
   const unsupportedDevicesUrl = "https://github.com/AmyJeanes/KeypadFlasher#supported-devices";
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -67,17 +75,21 @@ export default function CH55xBootloaderMinimal() {
       clientRef.current = client;
       const info = await client.connect();
       setConnectedInfo(info);
-      const config = findConfigForBootloaderId(info.id);
-      setSelectedConfig(config);
-      if (config) {
-        setStatus({ state: "connectedKnown", detail: config.name });
+      const profile = findProfileForBootloaderId(info.id);
+      setSelectedProfile(profile);
+      setSelectedLayout(profile?.layout ?? null);
+      setCurrentBindings(profile?.defaultBindings ?? null);
+      if (profile) {
+        setStatus({ state: "connectedKnown", detail: profile.name });
       } else {
         setStatus({ state: "connectedUnknown" });
       }
     } catch (e) {
       const msg = normalizeUsbErrorMessage(String((e as Error).message ?? e));
       setStatus({ state: "error", detail: msg });
-      setSelectedConfig(null);
+      setSelectedProfile(null);
+      setSelectedLayout(null);
+      setCurrentBindings(null);
     }
   }, [webUsbAvailable]);
 
@@ -91,7 +103,9 @@ export default function CH55xBootloaderMinimal() {
     }
     clientRef.current = null;
     setConnectedInfo(null);
-    setSelectedConfig(null);
+    setSelectedProfile(null);
+    setSelectedLayout(null);
+    setCurrentBindings(null);
     setStatus({ state: "idle" });
     setProgress({ phase: "", current: 0, total: 0 });
   }, []);
@@ -110,7 +124,9 @@ export default function CH55xBootloaderMinimal() {
       await client.disconnect().catch(() => {});
       clientRef.current = null;
       setConnectedInfo(null);
-      setSelectedConfig(null);
+      setSelectedProfile(null);
+      setSelectedLayout(null);
+      setCurrentBindings(null);
     } catch (e) {
       setStatus({ state: "flashError", detail: String((e as Error).message ?? e) });
     } finally {
@@ -145,17 +161,21 @@ export default function CH55xBootloaderMinimal() {
   }, [flashBytes]);
 
   const compileAndFlash = useCallback(async () => {
-    if (!selectedConfig && !debugFirmware) {
+    if (!selectedLayout && !debugFirmware) {
       setStatus({ state: "unsupported", detail: "Device not recognized. Use debug firmware or check supported layouts." });
       return;
     }
 
+    if (selectedLayout && !currentBindings) {
+      setStatus({ state: "unsupported", detail: "Bindings missing for detected layout." });
+      return;
+    }
+
     try {
-      setStatus({ state: "compiling", detail: debugFirmware ? "Debug firmware" : selectedConfig?.name });
-      const configurationPayload = selectedConfig?.config ?? null;
-      const payload = (!configurationPayload && debugFirmware)
-        ? { configuration: null, debug: true }
-        : { configuration: configurationPayload, debug: debugFirmware };
+      setStatus({ state: "compiling", detail: debugFirmware ? "Debug firmware" : selectedProfile?.name });
+      const payload: FirmwareRequestBody = (!selectedLayout && debugFirmware)
+        ? { layout: null, bindingProfile: null, debug: true }
+        : { layout: selectedLayout, bindingProfile: currentBindings, debug: debugFirmware };
 
       const resp = await fetch("flasher", {
         method: "POST",
@@ -193,9 +213,9 @@ export default function CH55xBootloaderMinimal() {
     } catch (err) {
       setStatus({ state: "compileError", detail: String((err as Error).message ?? err) });
     }
-  }, [flashBytes, debugFirmware, selectedConfig]);
+  }, [flashBytes, debugFirmware, selectedLayout, selectedProfile, currentBindings]);
 
-  const unsupportedDevice = connectedInfo != null && selectedConfig == null;
+  const unsupportedDevice = connectedInfo != null && selectedProfile == null;
 
   const statusBanner = (() => {
     switch (status.state) {
@@ -247,7 +267,7 @@ export default function CH55xBootloaderMinimal() {
               <input ref={fileInputRef} type="file" accept=".hex,.ihx,.ihex,.txt" className="hidden" onChange={onFileChange} />
             </>
           )}
-          <button onClick={compileAndFlash} className="btn btn-primary" disabled={!clientRef.current || (!selectedConfig && !debugFirmware)}>
+          <button onClick={compileAndFlash} className="btn btn-primary" disabled={!clientRef.current || (!selectedLayout && !debugFirmware)}>
             Compile & Flash
           </button>
         </div>
@@ -286,10 +306,10 @@ export default function CH55xBootloaderMinimal() {
             <div className="detected-card">
               <div className="detected-header">
                 <span className="pill">Detected device</span>
-                {!selectedConfig && <span className="pill pill-warn">Unknown</span>}
+                {!selectedProfile && <span className="pill pill-warn">Unknown</span>}
               </div>
-              <div className="detected-name">{selectedConfig?.name ?? "Unknown device"}</div>
-              {!selectedConfig && (
+              <div className="detected-name">{selectedProfile?.name ?? "Unknown device"}</div>
+              {!selectedProfile && (
                 <div className="detected-help">
                   Not recognized. Use debug firmware or view supported layouts.
                 </div>

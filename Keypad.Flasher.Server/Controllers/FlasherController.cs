@@ -1,9 +1,7 @@
-using System;
-using System.Diagnostics;
-using System.Text;
 using Keypad.Flasher.Server.Configuration;
+using Keypad.Flasher.Server.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using LayoutConfigurationBuilder = Keypad.Flasher.Server.Configuration.ConfigurationBuilder;
 
 namespace Keypad.Flasher.Server.Controllers
 {
@@ -11,15 +9,11 @@ namespace Keypad.Flasher.Server.Controllers
     [Route("[controller]")]
     public class FlasherController : ControllerBase
     {
-        private readonly Settings _settings;
-        private readonly ILogger<FlasherController> _logger;
-        private static readonly object _compileLock = new(); // serialize firmware builds across requests
-        private static readonly ConfigurationGenerator _configurationGenerator = new();
+        private readonly IFirmwareBuilder _firmwareBuilder;
 
-        public FlasherController(IOptions<Settings> settings, ILogger<FlasherController> logger)
+        public FlasherController(IFirmwareBuilder firmwareBuilder)
         {
-            _settings = settings.Value;
-            _logger = logger;
+            _firmwareBuilder = firmwareBuilder;
         }
 
         [HttpPost(Name = "GetFirmware")]
@@ -30,155 +24,74 @@ namespace Keypad.Flasher.Server.Controllers
                 return BadRequest(new { error = "A configuration payload is required." });
             }
 
-            if (!request.Debug && request.Configuration == null)
+            // Enforce explicit debug/non-debug contract
+            if (request.Debug)
             {
-                return BadRequest(new { error = "A configuration payload is required when debug is disabled." });
+                if (request.Layout != null || request.BindingProfile != null)
+                {
+                    return BadRequest(new { error = "Debug mode must not include layout or bindingProfile." });
+                }
+
+                var debugOnlyConfiguration = new ConfigurationDefinition(
+                    Array.Empty<ButtonBinding>(),
+                    Array.Empty<EncoderBinding>(),
+                    DebugMode: true,
+                    NeoPixelPin: -1,
+                    NeoPixelReversed: false);
+
+                var debugResult = _firmwareBuilder.BuildFirmware(debugOnlyConfiguration);
+                if (!debugResult.Success)
+                {
+                    return StatusCode(500, new
+                    {
+                        error = debugResult.Error ?? "Compile failed",
+                        exitCode = debugResult.ExitCode,
+                        stdout = debugResult.Stdout,
+                        stderr = debugResult.Stderr
+                    });
+                }
+
+                return new Firmware(debugResult.FileBytes ?? Array.Empty<byte>());
             }
 
-            var configuration = request.Configuration ?? new ConfigurationDefinition(
-                Array.Empty<ButtonBinding>(),
-                Array.Empty<EncoderBinding>(),
-                DebugMode: false,
-                NeoPixelPin: -1,
-                NeoPixelReversed: false);
+            if (request.Layout == null || request.BindingProfile == null)
+            {
+                return BadRequest(new { error = "Layout and bindingProfile are required when debug is false." });
+            }
+
+            ConfigurationDefinition configuration;
+            try
+            {
+                configuration = LayoutConfigurationBuilder.FromLayout(request.Layout, request.BindingProfile, request.Debug);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
 
             configuration = configuration with { DebugMode = request.Debug };
 
-            var firmwarePath = Path.GetFullPath(_settings.FirmwarePath);
-            var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            lock (_compileLock)
+            var buildResult = _firmwareBuilder.BuildFirmware(configuration);
+            if (!buildResult.Success)
             {
-                Directory.CreateDirectory(tempPath);
-                var workingFirmwarePath = Path.Combine(tempPath, "Keypad.Firmware");
-                CopyDirectory(firmwarePath, workingFirmwarePath);
-                var outputPath = Path.Combine(tempPath, "output");
-
-                var fqbn = configuration.DebugMode
-                    ? "CH55xDuino:mcs51:ch552:usb_settings=usbcdc,clock=16internal"
-                    : "CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal";
-                var headerPath = Path.Combine(workingFirmwarePath, "configuration.h");
-                var sourcePath = Path.Combine(workingFirmwarePath, "configuration.c");
-                System.IO.File.WriteAllText(headerPath, _configurationGenerator.GenerateHeader(configuration));
-                System.IO.File.WriteAllText(sourcePath, _configurationGenerator.GenerateSource(configuration));
-
-                Directory.CreateDirectory(outputPath);
-                try
+                return StatusCode(500, new
                 {
-                    // arduino-cli compile --fqbn CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal --export-binaries
-                    var args = new ProcessStartInfo
-                    {
-                        FileName = "arduino-cli",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = workingFirmwarePath,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    args.ArgumentList.Add("compile");
-                    args.ArgumentList.Add("--fqbn");
-                    args.ArgumentList.Add(fqbn);
-                    args.ArgumentList.Add("--config-file");
-                    args.ArgumentList.Add("arduino-cli.yaml");
-                    args.ArgumentList.Add("--export-binaries");
-                    args.ArgumentList.Add("--output-dir");
-                    args.ArgumentList.Add(outputPath);
-
-                    var stdout = new StringBuilder();
-                    var stderr = new StringBuilder();
-
-                    using (var process = Process.Start(args))
-                    {
-                        if (process == null)
-                        {
-                            _logger.LogError("Failed to start arduino-cli process.");
-                            return StatusCode(500, new { error = "Failed to start arduino-cli process." });
-                        }
-
-                        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
-                        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
-                        process.BeginOutputReadLine();
-                        process.BeginErrorReadLine();
-
-                        process.WaitForExit();
-
-                        if (process.ExitCode != 0)
-                        {
-                            _logger.LogError("arduino-cli compile failed. ExitCode: {ExitCode}\nStdOut:\n{StdOut}\nStdErr:\n{StdErr}", process.ExitCode, stdout.ToString(), stderr.ToString());
-                            return StatusCode(500, new
-                            {
-                                error = "Compile failed",
-                                exitCode = process.ExitCode,
-                                stdout = stdout.ToString(),
-                                stderr = stderr.ToString()
-                            });
-                        }
-
-                        _logger.LogInformation("arduino-cli compile succeeded. ExitCode: {ExitCode}\nStdOut:\n{StdOut}", process.ExitCode, stdout.ToString());
-                    }
-
-                    var path = Path.Combine(outputPath, "Keypad.Firmware.ino.hex");
-
-                    if (!System.IO.File.Exists(path))
-                    {
-                        _logger.LogError("Compiled firmware file not found at {Path}", path);
-                        return StatusCode(500, new { error = "Compiled firmware file not found." });
-                    }
-
-                    var fileBytes = System.IO.File.ReadAllBytes(path);
-
-                    return new Firmware(fileBytes);
-                }
-                finally
-                {
-                    try
-                    {
-                        Directory.Delete(tempPath, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to cleanup temp directory {TempPath}", tempPath);
-                    }
-                }
+                    error = buildResult.Error ?? "Compile failed",
+                    exitCode = buildResult.ExitCode,
+                    stdout = buildResult.Stdout,
+                    stderr = buildResult.Stderr
+                });
             }
+
+            return new Firmware(buildResult.FileBytes ?? Array.Empty<byte>());
         }
 
         public record Firmware(byte[] FileBytes);
 
-        public record FirmwareRequest(ConfigurationDefinition? Configuration, bool Debug = false);
+        public record FirmwareRequest(
+            DeviceLayout? Layout,
+            BindingProfile? BindingProfile,
+            bool Debug = false);
 
-        private static void CopyDirectory(string sourceDir, string destinationDir)
-        {
-            if (!Directory.Exists(sourceDir))
-            {
-                throw new DirectoryNotFoundException($"Source directory not found: {sourceDir}");
-            }
-
-            Directory.CreateDirectory(destinationDir);
-
-            var options = new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = false
-            };
-
-            foreach (var directoryPath in Directory.EnumerateDirectories(sourceDir, "*", options))
-            {
-                var relativePath = Path.GetRelativePath(sourceDir, directoryPath);
-                Directory.CreateDirectory(Path.Combine(destinationDir, relativePath));
-            }
-
-            foreach (var filePath in Directory.EnumerateFiles(sourceDir, "*", options))
-            {
-                var relativePath = Path.GetRelativePath(sourceDir, filePath);
-                var targetPath = Path.Combine(destinationDir, relativePath);
-                var targetDirectory = Path.GetDirectoryName(targetPath);
-                if (!string.IsNullOrEmpty(targetDirectory))
-                {
-                    Directory.CreateDirectory(targetDirectory);
-                }
-
-                System.IO.File.Copy(filePath, targetPath, overwrite: true);
-            }
-        }
     }
 }

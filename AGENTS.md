@@ -17,3 +17,8 @@ Keypad.Flasher.Server:
 - Use `dotnet test` to run unit tests
 - Always run build and unit tests after changing backend code
 - `ImplicitUsings` is enabled so common namespaces are included automatically and do not need to be added
+
+Keypad.Flasher.Client:
+- This is a React frontend application
+- Use `npm run build` to compile
+- Always compile after changing frontend code to test

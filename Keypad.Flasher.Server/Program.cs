@@ -1,4 +1,6 @@
 using Keypad.Flasher.Server;
+using Keypad.Flasher.Server.Configuration;
+using Keypad.Flasher.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 builder.Services.Configure<Settings>(builder.Configuration.GetSection("Settings"));
+builder.Services.AddSingleton<ConfigurationGenerator>();
+builder.Services.AddSingleton<IFirmwareBuilder, FirmwareBuilder>();
 
 var app = builder.Build();
 
