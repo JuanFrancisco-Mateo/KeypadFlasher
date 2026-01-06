@@ -77,9 +77,9 @@
     --accent-soft: #8ab4f8;
     --checkbox-bg: #111827;
     --subtle-bg: #111827;
-    --warn-bg: #2b1600;
-    --warn-border: #b45309;
-    --warn-text: #fbbf24;
+    --warn-bg: #241a0d;
+    --warn-border: #c27c2c;
+    --warn-text: #f3cf7a;
     --success: #34d399;
     --success-bg: #0f2b20;
     --success-border: #1e3a2f;
@@ -164,6 +164,63 @@ a {
 
 .modal-title {
   font-weight: 700;
+}
+
+.config-modal {
+  width: min(520px, 90vw);
+}
+
+.code-block {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-color);
+  max-height: 240px;
+  overflow: auto;
+  outline: 0;
+}
+
+.code-block.clickable {
+  cursor: pointer;
+}
+
+.code-block-flash {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 98, 254, 0.35);
+  animation: code-flash 220ms ease;
+}
+
+.text-area {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  color: var(--text-color);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  max-height: 300px;
+  overflow: auto;
+  border-radius: 12px;
+  outline: 0;
+}
+
+.text-area:focus,
+.text-area:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.28);
+  outline: none;
+}
+
+@keyframes code-flash {
+  0% { box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.35); border-color: var(--accent); }
+  60% { box-shadow: 0 0 0 8px rgba(15, 98, 254, 0); border-color: var(--accent); }
+  100% { box-shadow: none; border-color: var(--border-color); }
 }
 
 /* Shared form controls */
@@ -295,6 +352,16 @@ input[type="color"] {
   background: var(--accent);
   color: #ffffff;
   border-color: var(--accent);
+}
+
+.btn-warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-text);
+}
+
+.btn-warn:hover:not(:disabled) {
+  border-color: var(--warn-text);
 }
 
 .btn.ghost {

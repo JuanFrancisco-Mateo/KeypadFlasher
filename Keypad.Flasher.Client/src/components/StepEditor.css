@@ -199,6 +199,13 @@
   font-weight: 600;
 }
 
+.step-preview {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .checkbox-row {
   display: flex;
   gap: 8px;

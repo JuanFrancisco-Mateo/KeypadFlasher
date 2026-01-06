@@ -14,12 +14,13 @@ type LayoutPreviewProps = {
   warnSingleChord: boolean;
   onEdit: (target: EditTarget) => void;
   onOpenLightingForLed: (ledIndex: number) => void;
-  onOpenBindings: () => void;
   onResetDefaults?: () => void;
+  onExportConfig?: () => void;
+  onImportConfig?: () => void;
   canReset?: boolean;
 };
 
-export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onOpenBindings, onResetDefaults, canReset }: LayoutPreviewProps) {
+export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onResetDefaults, onExportConfig, onImportConfig, canReset }: LayoutPreviewProps) {
   const sortedButtons = [...layout.buttons].sort((a, b) => a.id - b.id);
   const encoderCount = layout.encoders.length;
 
@@ -45,13 +46,16 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ gap: "12px" }}>
-        <div className="panel-title">Layout</div>
-        <div className="muted small">Click any button or encoder tile to change its binding.</div>
+      <div className="panel-header layout-panel-header">
+        <div className="layout-heading-text">
+          <div className="panel-title">Layout</div>
+          <div className="muted small">Click any button or encoder tile to change its binding.</div>
+        </div>
         <div className="layout-actions">
-          <button className="btn" onClick={onOpenBindings}>Edit bindings</button>
+          {onExportConfig && <button className="btn" onClick={onExportConfig}>Export</button>}
+          {onImportConfig && <button className="btn" onClick={onImportConfig}>Import</button>}
           {canReset && onResetDefaults && (
-            <button className="btn ghost" onClick={onResetDefaults}>Reset</button>
+            <button className="btn btn-warn" onClick={onResetDefaults}>Reset</button>
           )}
         </div>
       </div>
@@ -121,8 +125,8 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                       onClick={handleTileClick}
                       title={button ? "Click to edit binding or use buttons below" : undefined}
                     >
-                      <span className="binding-text">{binding}</span>
                       <span className="muted small">{label}</span>
+                      <span className="binding-text">{binding}</span>
                       <div className="button-tile-actions">
                         <button
                           className="btn button-action"

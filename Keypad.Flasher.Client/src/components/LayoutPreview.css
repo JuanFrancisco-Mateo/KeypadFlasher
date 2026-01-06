@@ -6,6 +6,27 @@
   margin-top: 14px;
 }
 
+.panel-header.layout-panel-header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.layout-heading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .panel-header.layout-panel-header {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
 .encoder-column {
   display: flex;
   flex-direction: column;

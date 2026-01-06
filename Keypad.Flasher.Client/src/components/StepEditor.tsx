@@ -9,6 +9,7 @@ import {
   KEY_OPTION_LOOKUP,
   MODIFIER_BITS,
   defaultMouseValue,
+  describeStep,
   keyLabelFromCode,
   keyboardEventToKeycode,
   normalizeIncomingStep,
@@ -69,6 +70,7 @@ export function StepEditor({
   const [highlightedSteps, setHighlightedSteps] = useState<number[]>([]);
   const [removingStepIds, setRemovingStepIds] = useState<string[]>([]);
   const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
+  const [stepClipboard, setStepClipboard] = useState<HidStepDto[] | null>(null);
 
   const hiddenKeyInputRef = useRef<HTMLInputElement | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
@@ -375,56 +377,40 @@ export function StepEditor({
     setDragRestoreStep(null);
   };
 
-  const copyStepsToClipboard = async () => {
-    if (!navigator.clipboard) {
-      onError("Clipboard access is not available in this browser.");
-      return;
-    }
+  const copyStepsToClipboard = () => {
     if (editSteps.length === 0) return;
     const indices = (selectedStepIndices.length > 0 ? selectedStepIndices : editSteps.map((_, idx) => idx))
       .filter((i) => i >= 0 && i < editSteps.length);
-    const payload = { source: "keypad-flasher-steps", version: 1, steps: indices.map((i) => editSteps[i]) };
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    } catch (err) {
-      onError(`Copy failed: ${String((err as Error).message ?? err)}`);
-    }
+    const copied = indices.map((i) => editSteps[i]);
+    const serialized = JSON.parse(JSON.stringify(copied)) as HidStepDto[]; // deep copy to decouple edits
+    const normalized = serialized.map((s) => normalizeIncomingStep(s));
+    setStepClipboard(normalized);
   };
 
-  const pasteStepsFromClipboard = async () => {
-    if (!navigator.clipboard) {
-      onError("Clipboard access is not available in this browser.");
+  const pasteStepsFromClipboard = () => {
+    if (!stepClipboard || stepClipboard.length === 0) {
+      onError("Nothing to paste yet. Copy steps first.");
       return;
     }
-    try {
-      const text = await navigator.clipboard.readText();
-      const parsed = (() => {
-        try { return JSON.parse(text); } catch { return null; }
-      })();
-      const rawSteps = Array.isArray(parsed) ? parsed : (parsed && Array.isArray((parsed as any).steps) ? (parsed as any).steps : null);
-      if (!rawSteps) throw new Error("Clipboard does not contain steps.");
-      const normalized = rawSteps.map((s: unknown) => normalizeIncomingStep(s));
-      setEditSteps((prev) => {
-        const insertAt = prev.length;
-        const activeRef = activeStepIndex != null ? prev[activeStepIndex] : null;
-        const next = [...prev, ...normalized];
-        const newIndices = normalized.map((_: HidStepDto, offset: number) => insertAt + offset);
-        const newIds = normalized.map((s: HidStepDto) => getStepId(s));
-        if (activeRef) {
-          const found = next.findIndex((s) => s === activeRef);
-          setActiveStepIndex(found >= 0 ? found : null);
-        }
-        if (newIndices.length > 0) {
-          setActiveStepIndex(newIndices[newIndices.length - 1]);
-        }
-        setSelectedStepIndices((prevSel) => prevSel);
-        setFreshSteps((prevFresh) => [...prevFresh, ...newIds]);
-        scheduleHighlight(newIndices);
-        return next;
-      });
-    } catch (err) {
-      onError(`Paste failed: ${String((err as Error).message ?? err)}`);
-    }
+    const normalized = stepClipboard.map((s) => normalizeIncomingStep(s));
+    setEditSteps((prev) => {
+      const insertAt = prev.length;
+      const activeRef = activeStepIndex != null ? prev[activeStepIndex] : null;
+      const next = [...prev, ...normalized];
+      const newIndices = normalized.map((_: HidStepDto, offset: number) => insertAt + offset);
+      const newIds = normalized.map((s: HidStepDto) => getStepId(s));
+      if (activeRef) {
+        const found = next.findIndex((s) => s === activeRef);
+        setActiveStepIndex(found >= 0 ? found : null);
+      }
+      if (newIndices.length > 0) {
+        setActiveStepIndex(newIndices[newIndices.length - 1]);
+      }
+      setSelectedStepIndices((prevSel) => prevSel);
+      setFreshSteps((prevFresh) => [...prevFresh, ...newIds]);
+      scheduleHighlight(newIndices);
+      return next;
+    });
   };
 
   const performRemoveById = useCallback((stepId: string) => {
@@ -732,6 +718,7 @@ export function StepEditor({
                 const inDragGroup = draggingStepIndex != null && (selected || draggingStepIndex === idx);
                 const isFresh = freshSteps.includes(stepKey);
                 const collapsed = activeStepIndex != null ? idx !== activeStepIndex : true;
+                const collapsedPreview = collapsed ? describeStep(step) : "";
                 const measuredHeight = stepHeights[stepKey];
                 const bodyMaxHeight = collapsed
                   ? 0
@@ -772,6 +759,9 @@ export function StepEditor({
                           <span className="muted small">Select</span>
                         </label>
                         <div className="step-title">Step {idx + 1} · {kind === "Key" ? "Key" : kind === "Pause" ? "Pause" : kind === "Mouse" ? "Mouse" : "Function"}</div>
+                        {collapsed && collapsedPreview && (
+                          <span className="muted small step-preview" title={collapsedPreview}>{collapsedPreview}</span>
+                        )}
                       </div>
                       <div className="step-header-actions">
                         <button className="btn ghost" onClick={(e) => { e.stopPropagation(); duplicateStep(idx); }}>Duplicate</button>

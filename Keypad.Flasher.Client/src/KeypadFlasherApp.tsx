@@ -16,6 +16,7 @@ import {
   type HidBindingDto,
   type KnownDeviceProfile,
 } from "./lib/keypad-configs";
+import { normalizeIncomingStep } from "./lib/binding-utils";
 import { cloneLayout, loadLastBootloaderId, loadStoredConfig, saveLastBootloaderId, saveStoredConfig } from "./lib/layout-storage";
 import { LayoutPreview } from "./components/LayoutPreview";
 import { StatusBanner } from "./components/StatusBanner";
@@ -65,6 +66,65 @@ const sameBootloaderId = (a: number[] | null, b: number[] | null): boolean => {
   return a.every((v, idx) => v === b[idx]);
 };
 
+const clampColor = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(255, Math.max(0, Math.round(value)));
+};
+
+const validateBindingProfileCandidate = (raw: any): BindingProfileDto => {
+  if (!raw || typeof raw !== "object") throw new Error("Bindings must be an object.");
+  const btns = Array.isArray((raw as any).buttons) ? (raw as any).buttons : [];
+  const encs = Array.isArray((raw as any).encoders) ? (raw as any).encoders : [];
+  const buttons = btns.map((b: any) => {
+    if (!b || typeof b !== "object") throw new Error("Button binding invalid.");
+    const id = Number((b as any).id);
+    const binding = (b as any).binding;
+    if (!Number.isFinite(id)) throw new Error("Button binding id missing.");
+    if (!binding || typeof binding !== "object" || binding.type !== "Sequence" || !Array.isArray(binding.steps)) throw new Error("Button binding format invalid.");
+    const steps = binding.steps.map((s: any) => normalizeIncomingStep(s));
+    return { id, binding: { type: "Sequence", steps } as HidBindingDto };
+  });
+  const encoders = encs.map((e: any) => {
+    if (!e || typeof e !== "object") throw new Error("Encoder binding invalid.");
+    const id = Number((e as any).id);
+    if (!Number.isFinite(id)) throw new Error("Encoder binding id missing.");
+    const cw = (e as any).clockwise;
+    const ccw = (e as any).counterClockwise;
+    const press = (e as any).press;
+    if (!cw || cw.type !== "Sequence" || !Array.isArray(cw.steps)) throw new Error("Encoder clockwise binding invalid.");
+    if (!ccw || ccw.type !== "Sequence" || !Array.isArray(ccw.steps)) throw new Error("Encoder counter-clockwise binding invalid.");
+    const base = {
+      id,
+      clockwise: { type: "Sequence", steps: cw.steps.map((s: any) => normalizeIncomingStep(s)) } as HidBindingDto,
+      counterClockwise: { type: "Sequence", steps: ccw.steps.map((s: any) => normalizeIncomingStep(s)) } as HidBindingDto,
+    };
+    if (press && press.type === "Sequence" && Array.isArray(press.steps)) {
+      base.press = { type: "Sequence", steps: press.steps.map((s: any) => normalizeIncomingStep(s)) } as HidBindingDto;
+    }
+    return base;
+  });
+  return { buttons, encoders } as BindingProfileDto;
+};
+
+const validateLedConfigCandidate = (raw: any): LedConfigurationDto => {
+  if (!raw || typeof raw !== "object") throw new Error("LED config must be an object.");
+  const passiveModes = Array.isArray((raw as any).passiveModes) ? (raw as any).passiveModes : [];
+  const passiveColors = Array.isArray((raw as any).passiveColors) ? (raw as any).passiveColors : [];
+  const activeModes = Array.isArray((raw as any).activeModes) ? (raw as any).activeModes : [];
+  const activeColors = Array.isArray((raw as any).activeColors) ? (raw as any).activeColors : [];
+  const normColor = (c: any): { r: number; g: number; b: number } => ({
+    r: clampColor((c as any).r),
+    g: clampColor((c as any).g),
+    b: clampColor((c as any).b),
+  });
+  return {
+    passiveModes: passiveModes.map((m: any) => (m === "Off" || m === "Rainbow" || m === "Static" ? m : "Rainbow")) as PassiveLedMode[],
+    passiveColors: passiveColors.map((c: any) => normColor(c)),
+    activeModes: activeModes.map((m: any) => (m === "Off" || m === "Solid" ? m : "Solid")) as ActiveLedMode[],
+    activeColors: activeColors.map((c: any) => normColor(c)),
+  };
+};
+
 export default function KeypadFlasherApp() {
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [connectedInfo, setConnectedInfo] = useState<ConnectedInfo | null>(null);
@@ -83,7 +143,15 @@ export default function KeypadFlasherApp() {
   const [focusLedIndex, setFocusLedIndex] = useState<number | null>(null);
   const [copiedLedLighting, setCopiedLedLighting] = useState<{ passiveMode: PassiveLedMode; passive: LedColor; activeMode: ActiveLedMode; activeColor: LedColor } | null>(null);
   const [draftLedConfig, setDraftLedConfig] = useState<LedConfigurationDto | null>(null);
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [exportText, setExportText] = useState<string>("");
+  const [exportCopyStatus, setExportCopyStatus] = useState<string>("");
+  const [exportCopyFlash, setExportCopyFlash] = useState<boolean>(false);
+  const [importText, setImportText] = useState<string>("");
+  const [importError, setImportError] = useState<string>("");
   const defaultLightingStatus = "Copy a key's lighting to paste or apply to all.";
+  const modalPointerDownRef = useRef<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const clientRef = useRef<BootloaderClient | null>(null);
@@ -496,19 +564,6 @@ export default function KeypadFlasherApp() {
     setEditorBinding(binding);
   };
 
-  const openBindingsModal = () => {
-    if (selectedLayout && selectedLayout.buttons.length > 0) {
-      openEdit({ type: "button", buttonId: selectedLayout.buttons[0].id });
-      return;
-    }
-    const enc = selectedLayout?.encoders?.[0];
-    if (enc) {
-      openEdit({ type: "encoder", encoderId: enc.id, direction: "cw" });
-      return;
-    }
-    setStatus({ state: "error", detail: "No buttons or encoders to edit." });
-  };
-
   const updateBootloaderOnBoot = (target: EditTarget, value: boolean) => {
     setSelectedLayout((prev) => {
       if (!prev) return prev;
@@ -571,6 +626,95 @@ export default function KeypadFlasherApp() {
     if (btn) return `Button ${btn.id + 1}`;
     return `Unmapped LED ${idx + 1}`;
   };
+
+  const openExportModal = useCallback(() => {
+    if (!currentBindings) {
+      setStatus({ state: "error", detail: "Nothing to export yet. Connect a device and load bindings first." });
+      return;
+    }
+    const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
+    if (!targetId) {
+      setStatus({ state: "error", detail: "Connect a device before exporting." });
+      return;
+    }
+    const payload = {
+      version: 2,
+      deviceId: targetId,
+      profile: selectedProfile?.name ?? null,
+      exportedAt: new Date().toISOString(),
+      bindings: currentBindings,
+      ledConfig: normalizeLedConfig(selectedLayout, ledConfig),
+    };
+    const text = JSON.stringify(payload, null, 2);
+    setExportText(text);
+    setExportCopyStatus("Click the code to copy.");
+    setShowExportModal(true);
+  }, [connectedInfo, currentBindings, ledConfig, normalizeLedConfig, rememberedBootloaderId, selectedLayout, selectedProfile]);
+
+  const handleExportCopy = useCallback(async () => {
+    if (!exportText) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(exportText);
+        setExportCopyStatus("Copied to clipboard.");
+        setExportCopyFlash(true);
+        window.setTimeout(() => setExportCopyFlash(false), 220);
+        return;
+      }
+      setExportCopyStatus("Clipboard not available. Copy manually.");
+    } catch (err) {
+      setExportCopyStatus(`Copy failed: ${String((err as Error).message ?? err)}`);
+    }
+  }, [exportText]);
+
+  const openImportModal = useCallback(() => {
+    setImportText("");
+    setImportError("");
+    setShowImportModal(true);
+  }, []);
+
+  const parseImportedConfig = useCallback((text: string) => {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON. Paste a configuration export.");
+    }
+    if (!parsed || typeof parsed !== "object" || (parsed.version !== 1 && parsed.version !== 2)) {
+      throw new Error("Unsupported configuration format.");
+    }
+    const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
+    if (!targetId) throw new Error("Connect a device before importing.");
+    const rawId = parsed.deviceId ?? parsed.id ?? null;
+    if (!Array.isArray(rawId) || !rawId.every((n: any) => typeof n === "number")) {
+      throw new Error("Import missing device id.");
+    }
+    if (!sameBootloaderId(rawId, targetId)) {
+      throw new Error("This configuration is for a different device. Connect the matching device to import.");
+    }
+    const bindings = parsed.bindings ? validateBindingProfileCandidate(parsed.bindings) : null;
+    if (!bindings) throw new Error("Import is missing bindings.");
+    const ledCfg = parsed.ledConfig ? validateLedConfigCandidate(parsed.ledConfig) : null;
+    const normalizedLed = normalizeLedConfig(selectedLayout, ledCfg);
+    return { bindings, ledConfig: normalizedLed };
+  }, [connectedInfo, rememberedBootloaderId, normalizeLedConfig, selectedLayout]);
+
+  const applyImportedConfig = useCallback((text: string) => {
+    try {
+      const next = parseImportedConfig(text);
+      setCurrentBindings(next.bindings);
+      setLedConfig(next.ledConfig);
+      const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
+      if (targetId) {
+        saveStoredConfig(targetId, { bindings: next.bindings, layout: selectedLayout, ledConfig: next.ledConfig });
+      }
+      setShowImportModal(false);
+      setImportError("");
+      setStatus({ state: "connectedKnown", detail: "Configuration imported." });
+    } catch (err) {
+      setImportError(String((err as Error).message ?? err));
+    }
+  }, [parseImportedConfig, connectedInfo, rememberedBootloaderId, selectedLayout]);
 
   const closeLightingModal = () => {
     setShowLightingModal(false);
@@ -914,7 +1058,8 @@ export default function KeypadFlasherApp() {
             warnSingleChord={warnSingleChord}
             onEdit={openEdit}
             onOpenLightingForLed={openLightingForLed}
-            onOpenBindings={openBindingsModal}
+            onExportConfig={openExportModal}
+            onImportConfig={openImportModal}
             onResetDefaults={selectedProfile?.defaultBindings ? resetToDefaults : undefined}
             canReset={Boolean(selectedProfile?.defaultBindings)}
           />
@@ -934,8 +1079,21 @@ export default function KeypadFlasherApp() {
         )}
 
         {showLightingModal && selectedLayout && (
-          <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) closeLightingModal(); }}>
-            <div className="modal lighting-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (modalPointerDownRef.current) { modalPointerDownRef.current = false; return; }
+              if (e.target === e.currentTarget) closeLightingModal();
+            }}
+          >
+            <div
+              className="modal lighting-modal"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={() => { modalPointerDownRef.current = true; }}
+              onMouseUp={() => { modalPointerDownRef.current = false; }}
+            >
               <div className="modal-header">
                 {(() => {
                   const target = focusLedIndex != null ? focusLedIndex : 0;
@@ -1024,6 +1182,79 @@ export default function KeypadFlasherApp() {
               <div className="modal-actions">
                 <button className="btn" onClick={closeLightingModal}>Cancel</button>
                 <button className="btn btn-primary" onClick={saveLightingModal} disabled={!draftLedConfig}>Save</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showExportModal && (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (modalPointerDownRef.current) { modalPointerDownRef.current = false; return; }
+              if (e.target === e.currentTarget) setShowExportModal(false);
+            }}
+          >
+            <div
+              className="modal config-modal"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={() => { modalPointerDownRef.current = true; }}
+              onMouseUp={() => { modalPointerDownRef.current = false; }}
+            >
+              <div className="modal-header">
+                <div className="modal-title">Export configuration</div>
+                <button className="btn ghost" onClick={() => setShowExportModal(false)}>Close</button>
+              </div>
+              <div className="modal-body">
+                <p className="muted small">Click the block to copy. This includes layout, bindings, and lighting.</p>
+                <pre
+                  className={`code-block clickable${exportCopyFlash ? " code-block-flash" : ""}`}
+                  onClick={handleExportCopy}
+                  title="Click to copy"
+                  aria-label="Exported configuration JSON"
+                >{exportText}</pre>
+                <div className="muted small" style={{ minHeight: "18px" }}>{exportCopyStatus}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showImportModal && (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (modalPointerDownRef.current) { modalPointerDownRef.current = false; return; }
+              if (e.target === e.currentTarget) setShowImportModal(false);
+            }}
+          >
+            <div
+              className="modal config-modal"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={() => { modalPointerDownRef.current = true; }}
+              onMouseUp={() => { modalPointerDownRef.current = false; }}
+            >
+              <div className="modal-header">
+                <div className="modal-title">Import configuration</div>
+                <button className="btn ghost" onClick={() => setShowImportModal(false)}>Close</button>
+              </div>
+              <div className="modal-body">
+                <p className="muted small">Paste an exported configuration below. It will replace the current layout, bindings, and lighting.</p>
+                <textarea
+                  className="code-block text-area"
+                  style={{ width: "100%", minHeight: "220px" }}
+                  value={importText}
+                  onChange={(e) => { setImportText(e.target.value); setImportError(""); }}
+                  placeholder="Paste configuration JSON here"
+                />
+                {importError && <div className="status-banner status-error" style={{ marginTop: "8px" }}><div className="status-title">Import error</div><div className="status-body">{importError}</div></div>}
+              </div>
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setShowImportModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => applyImportedConfig(importText)}>Import</button>
               </div>
             </div>
           </div>
