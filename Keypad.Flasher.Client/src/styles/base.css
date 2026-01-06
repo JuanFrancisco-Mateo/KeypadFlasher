@@ -365,6 +365,7 @@ input[type="color"] {
   color: var(--button-text);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
+  -webkit-tap-highlight-color: rgba(15, 98, 254, 0.12);
 }
 
 .btn:hover:not(:disabled) {

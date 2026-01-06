@@ -2,19 +2,12 @@
   --tile-size: 192px;
   --tile-gap: 12px;
   --row-padding: 6px;
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: var(--tile-gap);
-  align-items: start;
+  display: block;
   margin-top: 14px;
   position: relative;
   isolation: isolate;
   z-index: 0;
   width: 100%;
-}
-
-.layout-preview.no-encoders {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .panel-header.layout-panel-header {
@@ -44,6 +37,7 @@
   gap: var(--tile-gap);
   align-items: center;
   margin-top: 6px;
+  flex: 0 0 auto;
 }
 
 .encoder-tile {
@@ -99,24 +93,39 @@
   flex-wrap: wrap;
 }
 
-.button-grid {
+.layout-scroll {
   display: flex;
-  flex-direction: column;
-  gap: var(--tile-gap);
+  overflow-x: auto;
   width: 100%;
   max-width: 100%;
-  overflow-x: scroll;
-  padding-bottom: 6px;
   cursor: auto;
   user-select: none;
 }
 
-.button-grid.scrollable {
+.layout-scroll.scrollable {
   cursor: grab;
 }
 
-.button-grid.scrollable:active {
+.layout-scroll.scrollable:active {
   cursor: grabbing;
+}
+
+.layout-scroll-inner {
+  display: flex;
+  gap: var(--tile-gap);
+  align-items: flex-start;
+  width: max-content;
+  min-width: auto;
+  flex-wrap: nowrap;
+}
+
+.button-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tile-gap);
+  width: max-content;
+  min-width: auto;
+  flex: 1 0 auto;
 }
 
 .button-grid-inner {
@@ -138,27 +147,27 @@
   box-sizing: border-box;
 }
 
-.button-grid::-webkit-scrollbar {
+.layout-scroll::-webkit-scrollbar {
   height: 12px;
 }
 
-.button-grid::-webkit-scrollbar-track {
+.layout-scroll::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   margin: 2px 0;
 }
 
-.button-grid::-webkit-scrollbar-thumb {
+.layout-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.45);
   border-radius: 999px;
   border: 2px solid rgba(0, 0, 0, 0.2);
 }
 
-.button-grid::-webkit-scrollbar-thumb:hover {
+.layout-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.55);
 }
 
-.button-grid {
+.layout-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.08);
 }
@@ -187,11 +196,11 @@
   cursor: auto;
 }
 
-.button-grid.scrollable .button-tile.clickable {
+.layout-scroll.scrollable .button-tile.clickable {
   cursor: grab;
 }
 
-.button-grid.scrollable .button-tile.clickable:active {
+.layout-scroll.scrollable .button-tile.clickable:active {
   cursor: grabbing;
 }
 

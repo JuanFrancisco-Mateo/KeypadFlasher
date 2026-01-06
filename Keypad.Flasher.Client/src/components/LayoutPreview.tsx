@@ -26,8 +26,16 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   const [confirmReset, setConfirmReset] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [gridScrollable, setGridScrollable] = useState(false);
+  const [touchArmedKey, setTouchArmedKey] = useState<string | null>(null);
+  const touchDeviceRef = useRef<boolean>(false);
 
   const isGridScrollable = (el: HTMLDivElement | null) => !!el && el.scrollWidth > el.clientWidth + 1;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasTouch = "ontouchstart" in window || (navigator.maxTouchPoints ?? 0) > 0 || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    touchDeviceRef.current = hasTouch;
+  }, []);
 
   useEffect(() => {
     const el = gridRef.current;
@@ -38,7 +46,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     checkScrollable();
     const observer = new ResizeObserver(checkScrollable);
     observer.observe(el);
-    const inner = el.querySelector(".button-grid-inner");
+    const inner = el.querySelector(".layout-scroll-inner");
     if (inner instanceof Element) observer.observe(inner);
     return () => observer.disconnect();
   }, []);
@@ -66,7 +74,8 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   const handleGridPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return; // allow middle-click auto-scroll and right-click
     const target = e.target as HTMLElement | null;
-    if (target && target.closest(".button-tile .button-action")) return; // let Bindings/Lighting buttons click
+    if (target && (target.closest(".button-tile .button-action") || target.closest(".encoder-binding-tile .button-action"))) return; // let action buttons click
+    setTouchArmedKey(null);
     const el = e.currentTarget;
     if (!isGridScrollable(el)) return;
     el.setPointerCapture(e.pointerId);
@@ -94,12 +103,34 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     }
   };
 
+  const handleActionClick = (tileKey: string, action: () => void, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (touchDeviceRef.current) {
+      if (touchArmedKey !== tileKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        setTouchArmedKey(tileKey);
+        return;
+      }
+      setTouchArmedKey(null);
+    }
+    action();
+  };
+
   const handleGridWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!isGridScrollable(e.currentTarget)) return;
     // Convert vertical wheel to horizontal scroll when hovered
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
       if (e.cancelable) e.preventDefault();
       e.currentTarget.scrollLeft += e.deltaY;
+    }
+  };
+
+  const handleTileTouchArm = (tileKey: string, e: React.MouseEvent<HTMLElement>) => {
+    if (!touchDeviceRef.current) return;
+    if (touchArmedKey !== tileKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTouchArmedKey(tileKey);
     }
   };
 
@@ -128,139 +159,161 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
         </div>
       )}
       <div className={`layout-preview${encoderCount === 0 ? " no-encoders" : ""}`}>
-        {encoderCount > 0 && (
-          <div className="encoder-column">
-            {layout.encoders.map((enc) => {
-            const bindings = encoderBindings.get(enc.id);
-            const ccw = describeBinding(bindings?.counterClockwise);
-            const cw = describeBinding(bindings?.clockwise);
-            const press = describeBinding(bindings?.press);
-            return (
-              <div className="encoder-tile" key={enc.id}>
-                <div className="encoder-label">Encoder {enc.id + 1}</div>
-                <div className="encoder-binding-list">
-                  <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" })}>
-                    <div className="encoder-binding-main">
-                      <div className="encoder-binding-top"><span className="muted small">Counter-clockwise</span></div>
-                      <div className="encoder-binding-body">
-                        <span className="binding-text">{ccw}</span>
-                      </div>
-                    </div>
-                    <div className="encoder-binding-actions hover-actions">
-                      <button
-                        className="btn button-action"
-                        onClick={(e) => { e.stopPropagation(); onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" }); }}
-                      >
-                        Bindings
-                      </button>
-                    </div>
-                  </div>
-                  <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" })}>
-                    <div className="encoder-binding-main">
-                      <div className="encoder-binding-top"><span className="muted small">Clockwise</span></div>
-                      <div className="encoder-binding-body">
-                        <span className="binding-text">{cw}</span>
-                      </div>
-                    </div>
-                    <div className="encoder-binding-actions hover-actions">
-                      <button
-                        className="btn button-action"
-                        onClick={(e) => { e.stopPropagation(); onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" }); }}
-                      >
-                        Bindings
-                      </button>
-                    </div>
-                  </div>
-                  {enc.press && (
-                    <div className="encoder-binding-tile clickable" onClick={() => onEdit({ type: "encoder", encoderId: enc.id, direction: "press" })}>
-                      <div className="encoder-binding-main">
-                        <div className="encoder-binding-top"><span className="muted small">Press</span></div>
-                        <div className="encoder-binding-body">
-                          <span className="binding-text">{press}</span>
-                        </div>
-                      </div>
-                      <div className="encoder-binding-actions hover-actions">
-                        <button
-                          className="btn button-action"
-                          onClick={(e) => { e.stopPropagation(); onEdit({ type: "encoder", encoderId: enc.id, direction: "press" }); }}
-                        >
-                          Bindings
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          </div>
-        )}
         <div
-          className={`button-grid${gridScrollable ? " scrollable" : ""}`}
+          className={`layout-scroll${gridScrollable ? " scrollable" : ""}`}
           ref={gridRef}
           onPointerDown={handleGridPointerDown}
           onPointerMove={handleGridPointerMove}
           onPointerUp={handleGridPointerUp}
           onPointerLeave={handleGridPointerUp}
           onWheel={handleGridWheel}
+          onClickCapture={() => { if (!touchDeviceRef.current && touchArmedKey) setTouchArmedKey(null); }}
         >
-          <div className="button-grid-inner">
-          {(() => {
-            let cursor = 0;
-            return layoutRows.map((count, rowIdx) => (
-              <div
-                className="button-row"
-                key={`row-${rowIdx}`}
-              >
-                {Array.from({ length: count }).map((_, colIdx) => {
-                  const button = sortedButtons[cursor];
-                  const label = button ? `Button ${button.id + 1}` : `Button ${cursor + 1}`;
-                  const binding = button ? describeBinding(buttonBindings.get(button.id)) : "Unassigned";
-                  cursor += 1;
-                  const passive = passiveStyleForButton(button ? button.ledIndex : -1);
-                  const className = `button-tile clickable${passive.className ? ` ${passive.className}` : ""}`;
-                  const ledIndex = button ? button.ledIndex : -1;
-                  const hasLed = !!ledConfig && ledIndex >= 0 && ledIndex < ledConfig.passiveColors.length;
-                  return (
-                    <div
-                      className={className}
-                      key={`btn-${rowIdx}-${colIdx}`}
-                      style={passive.style}
-                      title={button ? "Use the Bindings button to edit" : undefined}
-                    >
-                      <div className="button-main">
-                        <span className="small button-label">{label}</span>
-                        <span className="binding-text">{binding}</span>
-                      </div>
-                      <div className="button-tile-actions hover-actions">
-                        <button
-                          className="btn button-action"
-                          onClick={(e) => { e.stopPropagation(); button && onEdit({ type: "button", buttonId: button.id }); }}
-                        >
-                          Bindings
-                        </button>
-                        <button
-                          className="btn button-action"
-                          disabled={!hasLed}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (hasLed) {
-                              onOpenLightingForLed(ledIndex);
-                            }
-                          }}
-                          title={hasLed ? undefined : "No LED mapped for this key"}
-                        >
-                          {hasLed ? "Lighting" : "No LED"}
-                        </button>
-                      </div>
+          <div className="layout-scroll-inner">
+            {(() => {
+              let buttonCursor = 0;
+              return (
+                <>
+                  {encoderCount > 0 && (
+                    <div className="encoder-column">
+                      {layout.encoders.map((enc) => {
+                        const bindings = encoderBindings.get(enc.id);
+                        const ccw = describeBinding(bindings?.counterClockwise);
+                        const cw = describeBinding(bindings?.clockwise);
+                        const press = describeBinding(bindings?.press);
+                        return (
+                          <div className="encoder-tile" key={enc.id}>
+                            <div className="encoder-label">Encoder {enc.id + 1}</div>
+                            <div className="encoder-binding-list">
+                              <div
+                                className="encoder-binding-tile"
+                                onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                              >
+                                <div className="encoder-binding-main">
+                                  <div className="encoder-binding-top"><span className="muted small">Counter-clockwise</span></div>
+                                  <div className="encoder-binding-body">
+                                    <span className="binding-text">{ccw}</span>
+                                  </div>
+                                </div>
+                                <div className="encoder-binding-actions hover-actions">
+                                  <button
+                                    className="btn button-action"
+                                    onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" }), e)}
+                                  >
+                                    Bindings
+                                  </button>
+                                </div>
+                              </div>
+                              <div
+                                className="encoder-binding-tile"
+                                onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                              >
+                                <div className="encoder-binding-main">
+                                  <div className="encoder-binding-top"><span className="muted small">Clockwise</span></div>
+                                  <div className="encoder-binding-body">
+                                    <span className="binding-text">{cw}</span>
+                                  </div>
+                                </div>
+                                <div className="encoder-binding-actions hover-actions">
+                                  <button
+                                    className="btn button-action"
+                                    onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" }), e)}
+                                  >
+                                    Bindings
+                                  </button>
+                                </div>
+                              </div>
+                              {enc.press && (
+                                <div
+                                  className="encoder-binding-tile"
+                                  onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                                >
+                                  <div className="encoder-binding-main">
+                                    <div className="encoder-binding-top"><span className="muted small">Press</span></div>
+                                    <div className="encoder-binding-body">
+                                      <span className="binding-text">{press}</span>
+                                    </div>
+                                  </div>
+                                  <div className="encoder-binding-actions hover-actions">
+                                    <button
+                                      className="btn button-action"
+                                      onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "press" }), e)}
+                                    >
+                                      Bindings
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            ));
-          })()}
+                  )}
+                  <div className="button-grid">
+                    <div className="button-grid-inner">
+                      {layoutRows.map((count, rowIdx) => (
+                        <div
+                          className="button-row"
+                          key={`row-${rowIdx}`}
+                        >
+                          {Array.from({ length: count }).map((_, colIdx) => {
+                            const button = sortedButtons[buttonCursor];
+                            const label = button ? `Button ${button.id + 1}` : `Button ${buttonCursor + 1}`;
+                            const binding = button ? describeBinding(buttonBindings.get(button.id)) : "Unassigned";
+                            buttonCursor += 1;
+                            const passive = passiveStyleForButton(button ? button.ledIndex : -1);
+                            const className = `button-tile clickable${passive.className ? ` ${passive.className}` : ""}`;
+                            const ledIndex = button ? button.ledIndex : -1;
+                            const hasLed = !!ledConfig && ledIndex >= 0 && ledIndex < ledConfig.passiveColors.length;
+                            return (
+                              <div
+                                className={className}
+                                key={`btn-${rowIdx}-${colIdx}`}
+                                style={passive.style}
+                                title={button ? "Use the Bindings button to edit" : undefined}
+                                onClick={(e) => handleTileTouchArm(`tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`, e)}
+                              >
+                                <div className="button-main">
+                                  <span className="small button-label">{label}</span>
+                                  <span className="binding-text">{binding}</span>
+                                </div>
+                                <div className="button-tile-actions hover-actions">
+                                  <button
+                                    className="btn button-action"
+                                    onClick={(e) => {
+                                      handleActionClick(`tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`, () => {
+                                        if (button) onEdit({ type: "button", buttonId: button.id });
+                                      }, e);
+                                    }}
+                                  >
+                                    Bindings
+                                  </button>
+                                  <button
+                                    className="btn button-action"
+                                    disabled={!hasLed}
+                                    onClick={(e) => {
+                                      handleActionClick(`tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`, () => {
+                                        if (hasLed) onOpenLightingForLed(ledIndex);
+                                      }, e);
+                                    }}
+                                    title={hasLed ? undefined : "No LED mapped for this key"}
+                                  >
+                                    {hasLed ? "Lighting" : "No LED"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
-      </div>
       </div>
       {confirmReset && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setConfirmReset(false); }}>
