@@ -39,7 +39,7 @@ namespace Keypad.Flasher.Server.Controllers
                     NeoPixelPin: -1,
                     NeoPixelReversed: false,
                     LedConfig: new LedConfiguration(
-                        PassiveMode: PassiveLedMode.Off,
+                        PassiveModes: Array.Empty<PassiveLedMode>(),
                         PassiveColors: Array.Empty<LedColor>(),
                         ActiveModes: Array.Empty<ActiveLedMode>(),
                         ActiveColors: Array.Empty<LedColor>()));

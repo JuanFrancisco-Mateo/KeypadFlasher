@@ -122,7 +122,7 @@ namespace Keypad.Flasher.Server.Configuration
             if (neoPixelCount <= 0)
             {
                 sb.AppendLine("const led_configuration_t led_configuration = {");
-                AppendLine(sb, 1, ".passive_mode = LED_PASSIVE_OFF,");
+                AppendLine(sb, 1, ".passive_modes = 0,");
                 AppendLine(sb, 1, ".passive_colors = 0,");
                 AppendLine(sb, 1, ".active_modes = 0,");
                 AppendLine(sb, 1, ".active_colors = 0,");
@@ -133,6 +133,14 @@ namespace Keypad.Flasher.Server.Configuration
 
             var led = configuration.LedConfig ?? throw new InvalidOperationException("LED configuration missing.");
 
+            AppendLine(sb, 0, "static const led_passive_mode_t led_passive_modes[] = {");
+            for (int i = 0; i < neoPixelCount; i++)
+            {
+                var modeLiteral = ToPassiveModeLiteral(led.PassiveModes[i]);
+                var tail = i == neoPixelCount - 1 ? string.Empty : ",";
+                AppendLine(sb, 1, modeLiteral + tail);
+            }
+            AppendLine(sb, 0, "};");
             AppendLine(sb, 0, "static const led_rgb_t led_passive_colors[] = {");
             for (int i = 0; i < neoPixelCount; i++)
             {
@@ -158,7 +166,7 @@ namespace Keypad.Flasher.Server.Configuration
             }
             AppendLine(sb, 0, "};");
             sb.AppendLine("const led_configuration_t led_configuration = {");
-            AppendLine(sb, 1, $".passive_mode = {ToPassiveModeLiteral(led.PassiveMode)},");
+            AppendLine(sb, 1, ".passive_modes = led_passive_modes,");
             AppendLine(sb, 1, ".passive_colors = led_passive_colors,");
             AppendLine(sb, 1, ".active_modes = led_active_modes,");
             AppendLine(sb, 1, ".active_colors = led_active_colors,");

@@ -116,6 +116,12 @@ const encoder_binding_t encoder_bindings[] = {
 
 const size_t encoder_binding_count = 0;
 
+static const led_passive_mode_t led_passive_modes[] = {
+    LED_PASSIVE_RAINBOW,
+    LED_PASSIVE_RAINBOW,
+    LED_PASSIVE_RAINBOW,
+    LED_PASSIVE_RAINBOW
+};
 static const led_rgb_t led_passive_colors[] = {
     { .r = 255, .g = 0, .b = 0 },
     { .r = 255, .g = 255, .b = 0 },
@@ -135,7 +141,7 @@ static const led_rgb_t led_active_colors[] = {
     { .r = 255, .g = 255, .b = 255 }
 };
 const led_configuration_t led_configuration = {
-    .passive_mode = LED_PASSIVE_RAINBOW,
+    .passive_modes = led_passive_modes,
     .passive_colors = led_passive_colors,
     .active_modes = led_active_modes,
     .active_colors = led_active_colors,

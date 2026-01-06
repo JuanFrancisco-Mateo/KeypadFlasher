@@ -481,7 +481,7 @@ namespace Keypad.Flasher.Server.Tests
             if (count <= 0)
             {
                 return new LedConfiguration(
-                    PassiveMode: PassiveLedMode.Off,
+                    PassiveModes: Array.Empty<PassiveLedMode>(),
                     PassiveColors: Array.Empty<LedColor>(),
                     ActiveModes: Array.Empty<ActiveLedMode>(),
                     ActiveColors: Array.Empty<LedColor>());
@@ -503,8 +503,9 @@ namespace Keypad.Flasher.Server.Tests
             var activeModes = Enumerable.Repeat(ActiveLedMode.Solid, count).ToArray();
             var activeColors = Enumerable.Repeat(new LedColor(255, 255, 255), count).ToArray();
 
+            var passiveModes = Enumerable.Repeat(PassiveLedMode.Rainbow, count).ToArray();
             return new LedConfiguration(
-                PassiveMode: PassiveLedMode.Rainbow,
+                PassiveModes: passiveModes,
                 PassiveColors: passiveColors,
                 ActiveModes: activeModes,
                 ActiveColors: activeColors);

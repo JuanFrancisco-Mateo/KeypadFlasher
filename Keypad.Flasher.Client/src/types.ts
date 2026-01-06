@@ -8,7 +8,7 @@ export type ActiveLedMode = "Off" | "Solid";
 export type LedColor = { r: number; g: number; b: number };
 
 export type LedConfigurationDto = {
-  passiveMode: PassiveLedMode;
+  passiveModes: PassiveLedMode[];
   passiveColors: LedColor[];
   activeModes: ActiveLedMode[];
   activeColors: LedColor[];

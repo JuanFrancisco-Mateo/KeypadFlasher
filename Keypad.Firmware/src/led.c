@@ -20,6 +20,15 @@ static uint8_t led_count(void)
   return led_cfg_s->count;
 }
 
+static led_passive_mode_t passive_mode_for(uint8_t led)
+{
+  if (led >= led_cfg_s->count || led_cfg_s->passive_modes == 0)
+  {
+    return LED_PASSIVE_OFF;
+  }
+  return led_cfg_s->passive_modes[led];
+}
+
 static uint8_t led_physical_index(uint8_t logical)
 {
   // Map logical LED ordering to physical wiring when reversed.
@@ -72,14 +81,29 @@ void led_set_key_state(int key, bool pressed)
 
 void led_update()
 {
-  if (led_cfg_s->passive_mode == LED_PASSIVE_RAINBOW)
+  const uint8_t count = led_count();
+  bool has_rainbow = false;
+  for (uint8_t i = 0; i < count; ++i)
+  {
+    if (passive_mode_for(i) == LED_PASSIVE_RAINBOW)
+    {
+      has_rainbow = true;
+      break;
+    }
+  }
+
+  if (has_rainbow)
   {
     const uint32_t now = millis();
     if ((uint32_t)(now - last_loop_step_ms_s) >= LED_LOOP_STEP_INTERVAL_MS)
     {
       last_loop_step_ms_s = now;
-      for (uint8_t i = 0; i < NEO_COUNT; ++i)
+      for (uint8_t i = 0; i < count; ++i)
       {
+        if (passive_mode_for(i) != LED_PASSIVE_RAINBOW)
+        {
+          continue;
+        }
         color_hue_s[i] += 1;
         if (color_hue_s[i] > 191)
         {
@@ -89,7 +113,6 @@ void led_update()
     }
   }
 
-  const uint8_t count = led_count();
   for (uint8_t led = 0; led < count; ++led)
   {
     const uint8_t physical = led_physical_index(led);
@@ -109,7 +132,7 @@ void led_update()
       }
     }
 
-    switch (led_cfg_s->passive_mode)
+    switch (passive_mode_for(led))
     {
     case LED_PASSIVE_OFF:
       NEO_writeColor(physical, 0, 0, 0);

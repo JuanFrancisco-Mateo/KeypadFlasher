@@ -81,7 +81,7 @@ export default function KeypadFlasherApp() {
   const [editorBinding, setEditorBinding] = useState<HidBindingDto | null>(null);
   const [showLightingModal, setShowLightingModal] = useState<boolean>(false);
   const [focusLedIndex, setFocusLedIndex] = useState<number | null>(null);
-  const [copiedLedLighting, setCopiedLedLighting] = useState<{ passive: LedColor; activeMode: ActiveLedMode; activeColor: LedColor } | null>(null);
+  const [copiedLedLighting, setCopiedLedLighting] = useState<{ passiveMode: PassiveLedMode; passive: LedColor; activeMode: ActiveLedMode; activeColor: LedColor } | null>(null);
   const [draftLedConfig, setDraftLedConfig] = useState<LedConfigurationDto | null>(null);
   const defaultLightingStatus = "Copy a key's lighting to paste or apply to all.";
 
@@ -102,6 +102,7 @@ export default function KeypadFlasherApp() {
   const buildDefaultLedConfig = useCallback((layout: DeviceLayoutDto | null): LedConfigurationDto | null => {
     const count = ledCountFromLayout(layout);
     if (count <= 0) return null;
+    const passiveModes: PassiveLedMode[] = Array.from({ length: count }, () => "Rainbow");
     const passiveColors: LedColor[] = Array.from({ length: count }, (_, idx) => {
       const seq: LedColor[] = [
         { r: 255, g: 0, b: 0 },
@@ -113,7 +114,7 @@ export default function KeypadFlasherApp() {
     const activeColors: LedColor[] = Array.from({ length: count }, () => ({ r: 255, g: 255, b: 255 }));
     const activeModes: ActiveLedMode[] = Array.from({ length: count }, () => "Solid");
     return {
-      passiveMode: "Rainbow",
+      passiveModes,
       passiveColors,
       activeModes,
       activeColors,
@@ -123,9 +124,23 @@ export default function KeypadFlasherApp() {
   const normalizeLedConfig = useCallback((layout: DeviceLayoutDto | null, config: LedConfigurationDto | null): LedConfigurationDto | null => {
     const count = ledCountFromLayout(layout);
     if (count <= 0) return null;
-    const base = config ?? buildDefaultLedConfig(layout);
+    const coerceLegacy = (input: LedConfigurationDto | null): LedConfigurationDto | null => {
+      if (!input) return null;
+      const legacyMode = (input as any).passiveMode as PassiveLedMode | undefined;
+      const passiveModes: PassiveLedMode[] = Array.isArray(input.passiveModes) && input.passiveModes.length > 0
+        ? [...input.passiveModes]
+        : (legacyMode ? Array.from({ length: count }, () => legacyMode) : []);
+      return {
+        passiveModes,
+        passiveColors: input.passiveColors ?? [],
+        activeModes: input.activeModes ?? [],
+        activeColors: input.activeColors ?? [],
+      };
+    };
+
+    const base = coerceLegacy(config) ?? buildDefaultLedConfig(layout);
     if (!base) return null;
-    if (base.passiveColors.length === count && base.activeModes.length === count && base.activeColors.length === count) {
+    if (base.passiveModes.length === count && base.passiveColors.length === count && base.activeModes.length === count && base.activeColors.length === count) {
       return base;
     }
     const defaults = buildDefaultLedConfig(layout);
@@ -581,7 +596,7 @@ export default function KeypadFlasherApp() {
   const openLightingForLed = (idx: number) => {
     if (!ledConfig || idx < 0 || idx >= ledConfig.passiveColors.length) return;
     setDraftLedConfig({
-      passiveMode: ledConfig.passiveMode,
+      passiveModes: [...ledConfig.passiveModes],
       passiveColors: [...ledConfig.passiveColors],
       activeModes: [...ledConfig.activeModes],
       activeColors: [...ledConfig.activeColors],
@@ -600,16 +615,21 @@ export default function KeypadFlasherApp() {
     }
   }, [showLightingModal, focusLedIndex]);
 
-  const setPassiveMode = (mode: PassiveLedMode) => {
-    setLedConfig((prev) => (prev ? { ...prev, passiveMode: mode } : prev));
-  };
-
   const setPassiveColor = (idx: number, color: LedColor) => {
     setDraftLedConfig((prev) => {
       if (!prev || idx < 0 || idx >= prev.passiveColors.length) return prev;
       const next = [...prev.passiveColors];
       next[idx] = color;
       return { ...prev, passiveColors: next };
+    });
+  };
+
+  const setPassiveModeForLed = (idx: number, mode: PassiveLedMode) => {
+    setDraftLedConfig((prev) => {
+      if (!prev || idx < 0 || idx >= prev.passiveModes.length) return prev;
+      const passiveModes = [...prev.passiveModes];
+      passiveModes[idx] = mode;
+      return { ...prev, passiveModes };
     });
   };
 
@@ -637,8 +657,9 @@ export default function KeypadFlasherApp() {
 
   const copyLedLighting = (idx: number) => {
     const source = draftLedConfig;
-    if (!source || idx < 0 || idx >= source.passiveColors.length || idx >= source.activeModes.length || idx >= source.activeColors.length) return;
+    if (!source || idx < 0 || idx >= source.passiveColors.length || idx >= source.activeModes.length || idx >= source.activeColors.length || idx >= source.passiveModes.length) return;
     setCopiedLedLighting({
+      passiveMode: source.passiveModes[idx],
       passive: source.passiveColors[idx],
       activeMode: source.activeModes[idx],
       activeColor: source.activeColors[idx],
@@ -648,26 +669,30 @@ export default function KeypadFlasherApp() {
 
   const pasteLedLighting = (idx: number) => {
     setDraftLedConfig((prev) => {
-      if (!prev || !copiedLedLighting || idx < 0 || idx >= prev.passiveColors.length || idx >= prev.activeModes.length || idx >= prev.activeColors.length) return prev;
+      if (!prev || !copiedLedLighting || idx < 0 || idx >= prev.passiveColors.length || idx >= prev.activeModes.length || idx >= prev.activeColors.length || idx >= prev.passiveModes.length) return prev;
       const passiveColors = [...prev.passiveColors];
+      const passiveModes = [...prev.passiveModes];
       const activeModes = [...prev.activeModes];
       const activeColors = [...prev.activeColors];
+      passiveModes[idx] = copiedLedLighting.passiveMode;
       passiveColors[idx] = copiedLedLighting.passive;
       activeModes[idx] = copiedLedLighting.activeMode;
       activeColors[idx] = copiedLedLighting.activeColor;
-      return { ...prev, passiveColors, activeModes, activeColors };
+      return { ...prev, passiveModes, passiveColors, activeModes, activeColors };
     });
     setLightingStatus(`Pasted lighting to LED ${idx + 1}.`);
   };
 
   const applyLightingToAll = (sourceIdx: number) => {
     setDraftLedConfig((prev) => {
-      if (!prev || sourceIdx < 0 || sourceIdx >= prev.passiveColors.length || sourceIdx >= prev.activeModes.length || sourceIdx >= prev.activeColors.length) return prev;
+      if (!prev || sourceIdx < 0 || sourceIdx >= prev.passiveColors.length || sourceIdx >= prev.activeModes.length || sourceIdx >= prev.activeColors.length || sourceIdx >= prev.passiveModes.length) return prev;
+      const passiveMode = prev.passiveModes[sourceIdx];
       const passive = prev.passiveColors[sourceIdx];
       const activeMode = prev.activeModes[sourceIdx];
       const activeColor = prev.activeColors[sourceIdx];
       return {
         ...prev,
+        passiveModes: prev.passiveModes.map(() => passiveMode),
         passiveColors: prev.passiveColors.map(() => passive),
         activeModes: prev.activeModes.map(() => activeMode),
         activeColors: prev.activeColors.map(() => activeColor),
@@ -873,11 +898,7 @@ export default function KeypadFlasherApp() {
         {/* Lighting controls moved into modal; open from Layout card. */}
 
         {selectedLayout && (
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">Lighting</div>
-              <div className="muted small">Set global passive mode. Use a key's Lighting button for per-key colors or copy/paste.</div>
-            </div>
+          <>
             {!layoutLedCount && (
               <div className="status-banner status-warn" style={{ marginTop: "8px" }}>
                 <div className="status-title">No LEDs on this device</div>
@@ -890,20 +911,7 @@ export default function KeypadFlasherApp() {
                 <div className="status-body">This device did not provide lighting configuration data.</div>
               </div>
             )}
-            {layoutLedCount > 0 && ledConfig && ledCount > 0 && (
-              <div className="space-y-2">
-                <div className="form-row" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  <label style={{ width: "140px" }}>Passive mode</label>
-                  <select value={ledConfig.passiveMode} onChange={(e) => setPassiveMode(e.target.value as PassiveLedMode)}>
-                    <option value="Off">Off</option>
-                    <option value="Rainbow">Rainbow</option>
-                    <option value="Static">Static</option>
-                  </select>
-                  <span className="muted small">Static lets you set per-key colors.</span>
-                </div>
-              </div>
-            )}
-          </div>
+          </>
         )}
 
         {selectedLayout && (
@@ -951,8 +959,10 @@ export default function KeypadFlasherApp() {
                       const target = focusLedIndex != null ? focusLedIndex : 0;
                       const activeConfig = draftLedConfig;
                       const modalLedCount = activeConfig?.passiveColors.length ?? 0;
-                      const modalPassiveStaticEnabled = activeConfig?.passiveMode === "Static";
-                      if (target < 0 || target >= modalLedCount) return <div className="muted small">LED out of range.</div>;
+                      const passiveModeCount = activeConfig?.passiveModes.length ?? 0;
+                      if (target < 0 || target >= modalLedCount || target >= passiveModeCount) return <div className="muted small">LED out of range.</div>;
+                      const passiveMode = activeConfig.passiveModes[target];
+                      const modalPassiveStaticEnabled = passiveMode === "Static";
                       return (
                         <div className="led-grid" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                           <div id={`led-card-${target}`} className="card subtle" style={{ padding: "12px" }}>
@@ -960,6 +970,14 @@ export default function KeypadFlasherApp() {
                             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
                               <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                 <span className="muted small">Passive</span>
+                                <select
+                                  value={passiveMode}
+                                  onChange={(e) => setPassiveModeForLed(target, e.target.value as PassiveLedMode)}
+                                >
+                                  <option value="Off">Off</option>
+                                  <option value="Rainbow">Rainbow</option>
+                                  <option value="Static">Static</option>
+                                </select>
                                 <input
                                   type="color"
                                   disabled={!modalPassiveStaticEnabled}

@@ -29,7 +29,7 @@ typedef enum
 
 typedef struct
 {
-    led_passive_mode_t passive_mode;
+    const led_passive_mode_t *passive_modes;
     const led_rgb_t *passive_colors;
     const led_active_mode_t *active_modes;
     const led_rgb_t *active_colors;

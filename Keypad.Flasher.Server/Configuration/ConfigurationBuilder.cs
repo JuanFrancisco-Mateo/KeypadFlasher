@@ -166,13 +166,31 @@ namespace Keypad.Flasher.Server.Configuration
             if (ledCount <= 0)
             {
                 return new LedConfiguration(
-                    PassiveMode: PassiveLedMode.Off,
+                    PassiveModes: Array.Empty<PassiveLedMode>(),
                     PassiveColors: Array.Empty<LedColor>(),
                     ActiveModes: Array.Empty<ActiveLedMode>(),
                     ActiveColors: Array.Empty<LedColor>());
             }
 
-            var passiveMode = input?.PassiveMode ?? PassiveLedMode.Rainbow;
+            var passiveModes = new PassiveLedMode[ledCount];
+            if (input?.PassiveModes != null && input.PassiveModes.Count > 0)
+            {
+                if (input.PassiveModes.Count != ledCount)
+                {
+                    throw new InvalidOperationException($"Passive modes length {input.PassiveModes.Count} does not match LED count {ledCount}.");
+                }
+                for (var i = 0; i < ledCount; i++)
+                {
+                    passiveModes[i] = input.PassiveModes[i];
+                }
+            }
+            else
+            {
+                for (var i = 0; i < ledCount; i++)
+                {
+                    passiveModes[i] = PassiveLedMode.Rainbow;
+                }
+            }
 
             var passiveColors = new LedColor[ledCount];
             if (input?.PassiveColors != null && input.PassiveColors.Count > 0)
@@ -236,7 +254,7 @@ namespace Keypad.Flasher.Server.Configuration
             }
 
             return new LedConfiguration(
-                PassiveMode: passiveMode,
+                PassiveModes: passiveModes,
                 PassiveColors: passiveColors,
                 ActiveModes: activeModes,
                 ActiveColors: activeColors);

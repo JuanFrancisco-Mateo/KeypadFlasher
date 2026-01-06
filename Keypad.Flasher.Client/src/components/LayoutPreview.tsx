@@ -24,19 +24,23 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   const encoderCount = layout.encoders.length;
 
   const passiveStyleForButton = (ledIndex: number): { className?: string; style?: CSSProperties } => {
-    if (!ledConfig || ledIndex < 0 || ledIndex >= ledConfig.passiveColors.length) return {};
-    if (ledConfig.passiveMode === "Rainbow") {
+    if (!ledConfig || ledIndex < 0 || ledIndex >= ledConfig.passiveColors.length || ledIndex >= ledConfig.passiveModes.length) return {};
+    const mode = ledConfig.passiveModes[ledIndex];
+    if (mode === "Rainbow") {
       return { className: "rainbow" };
     }
-    const color = ledConfig.passiveColors[ledIndex];
-    return {
-      style: {
-        background: "var(--card-bg)",
-        backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.12), rgba(${color.r}, ${color.g}, ${color.b}, 0.06))`,
-        boxShadow: "var(--shadow)",
-        borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, 0.25)`,
-      }
-    };
+    if (mode === "Static") {
+      const color = ledConfig.passiveColors[ledIndex];
+      return {
+        style: {
+          background: "var(--card-bg)",
+          backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.12), rgba(${color.r}, ${color.g}, ${color.b}, 0.06))`,
+          boxShadow: "var(--shadow)",
+          borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, 0.25)`,
+        }
+      };
+    }
+    return {};
   };
 
   return (
