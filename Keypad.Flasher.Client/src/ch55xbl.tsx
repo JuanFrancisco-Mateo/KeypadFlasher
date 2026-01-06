@@ -33,6 +33,50 @@ const MODIFIER_BITS = [
   { bit: 8, label: "Win" },
 ];
 
+const STORAGE_PREFIX = "ch55x-config";
+const storageAvailable = typeof window !== "undefined" && !!window.localStorage;
+
+type StoredConfig = { bindings: BindingProfileDto | null; layout: DeviceLayoutDto | null };
+
+const cloneLayout = (layout: DeviceLayoutDto): DeviceLayoutDto => ({
+  ...layout,
+  buttons: layout.buttons.map((b) => ({ ...b })),
+  encoders: layout.encoders.map((e) => ({ ...e, press: e.press ? { ...e.press } : undefined })),
+});
+
+const loadStoredConfig = (bootloaderId: number[]): StoredConfig | null => {
+  if (!storageAvailable) return null;
+  const key = `${STORAGE_PREFIX}:${bootloaderId.join("-")}`;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredConfig;
+    if (parsed && typeof parsed === "object") {
+      return {
+        bindings: parsed.bindings ?? null,
+        layout: parsed.layout ? cloneLayout(parsed.layout) : null,
+      };
+    }
+  } catch {
+    // ignore parse/storage errors
+  }
+  return null;
+};
+
+const saveStoredConfig = (bootloaderId: number[], config: StoredConfig) => {
+  if (!storageAvailable) return;
+  const key = `${STORAGE_PREFIX}:${bootloaderId.join("-")}`;
+  try {
+    if (config.bindings || config.layout) {
+      window.localStorage.setItem(key, JSON.stringify(config));
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore storage errors
+  }
+};
+
 type KeyOption = { value: number; label: string };
 type KeyOptionGroup = { label: string; options: KeyOption[] };
 
@@ -201,6 +245,7 @@ type StatusState =
   | "flashError"
   | "fileApiMissing"
   | "needConnect"
+  | "deviceLost"
   | "error";
 
 type Status = { state: StatusState; detail?: string };
@@ -214,6 +259,11 @@ function describeBinding(binding: HidBindingDto | undefined | null): string {
   if (!binding.steps || binding.steps.length === 0) return "(empty)";
   return binding.steps.map((s) => describeStep(s)).join(", ");
 }
+
+const sameBootloaderId = (a: number[] | null, b: number[] | null): boolean => {
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((v, idx) => v === b[idx]);
+};
 
 export default function CH55xBootloaderMinimal() {
   const [status, setStatus] = useState<Status>({ state: "idle" });
@@ -232,6 +282,7 @@ export default function CH55xBootloaderMinimal() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hiddenKeyInputRef = useRef<HTMLInputElement | null>(null);
   const clientRef = useRef<CH55xBootloader | null>(null);
+  const lastBootloaderIdRef = useRef<number[] | null>(null);
 
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
   const secure = typeof window !== "undefined" ? window.isSecureContext : true;
@@ -260,6 +311,24 @@ export default function CH55xBootloaderMinimal() {
       setDebugFirmware(false);
     }
   }, [devMode, debugFirmware]);
+
+  const disconnectClient = useCallback(async (nextStatus?: Status, reboot?: boolean) => {
+    const client = clientRef.current;
+    if (client) {
+      if (reboot) {
+        await client.runApplication().catch(() => {});
+      }
+      await client.disconnect().catch(() => {});
+    }
+    clientRef.current = null;
+    setConnectedInfo(null);
+    setProgress({ phase: "", current: 0, total: 0 });
+    if (nextStatus) setStatus(nextStatus);
+  }, []);
+
+  const handlePassiveDisconnect = useCallback(async (detail?: string) => {
+    await disconnectClient({ state: "deviceLost", detail: detail ?? "Device disconnected. Reconnect to continue." });
+  }, [disconnectClient]);
 
   useEffect(() => {
     if (capturingStepIndex == null) return;
@@ -300,11 +369,21 @@ export default function CH55xBootloaderMinimal() {
       const client = clientRef.current ?? new CH55xBootloader();
       clientRef.current = client;
       const info = await client.connect();
+      const previousId = lastBootloaderIdRef.current;
+      const sameDevice = sameBootloaderId(previousId, info.id);
+      lastBootloaderIdRef.current = info.id;
       setConnectedInfo(info);
       const profile = findProfileForBootloaderId(info.id);
       setSelectedProfile(profile);
-      setSelectedLayout(profile?.layout ?? null);
-      setCurrentBindings(profile?.defaultBindings ?? null);
+      const stored = loadStoredConfig(info.id);
+      if (!sameDevice || !selectedLayout) {
+        const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
+        setSelectedLayout(nextLayout);
+      }
+      const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+      if (!sameDevice || !currentBindings) {
+        setCurrentBindings(nextBindings);
+      }
       if (profile) {
         setStatus({ state: "connectedKnown", detail: profile.name });
       } else {
@@ -313,28 +392,12 @@ export default function CH55xBootloaderMinimal() {
     } catch (e) {
       const msg = normalizeUsbErrorMessage(String((e as Error).message ?? e));
       setStatus({ state: "error", detail: msg });
-      setSelectedProfile(null);
-      setSelectedLayout(null);
-      setCurrentBindings(null);
     }
-  }, [webUsbAvailable]);
+  }, [webUsbAvailable, selectedLayout, currentBindings]);
 
   const handleDisconnect = useCallback(async () => {
-    const client = clientRef.current;
-    if (!client) return;
-    try {
-      await client.disconnect();
-    } catch {
-      // ignore disconnect errors
-    }
-    clientRef.current = null;
-    setConnectedInfo(null);
-    setSelectedProfile(null);
-    setSelectedLayout(null);
-    setCurrentBindings(null);
-    setStatus({ state: "idle" });
-    setProgress({ phase: "", current: 0, total: 0 });
-  }, []);
+    await disconnectClient({ state: "idle" }, true);
+  }, [disconnectClient]);
 
   const flashBytes = useCallback(async (bytes: Uint8Array) => {
     const client = clientRef.current;
@@ -347,18 +410,52 @@ export default function CH55xBootloaderMinimal() {
       setStatus({ state: "flashing" });
       await client.flashBinary(bytes, (p) => setProgress(p));
       setStatus({ state: "flashDone" });
-      await client.disconnect().catch(() => {});
-      clientRef.current = null;
-      setConnectedInfo(null);
-      setSelectedProfile(null);
-      setSelectedLayout(null);
-      setCurrentBindings(null);
+      await disconnectClient();
     } catch (e) {
       setStatus({ state: "flashError", detail: String((e as Error).message ?? e) });
     } finally {
       setProgress({ phase: "", current: 0, total: 0 });
     }
-  }, []);
+  }, [disconnectClient]);
+
+  useEffect(() => {
+    if (!connectedInfo) return;
+    saveStoredConfig(connectedInfo.id, { bindings: currentBindings, layout: selectedLayout });
+  }, [connectedInfo, currentBindings, selectedLayout]);
+
+  useEffect(() => {
+    if (!webUsbAvailable || typeof navigator === "undefined" || !navigator.usb) return;
+    const onUsbDisconnect = (event: USBConnectionEvent) => {
+      const connected = clientRef.current?.getConnectedDevice();
+      if (!connected) return;
+      const sameDevice = event.device === connected
+        || (event.device.vendorId === connected.vendorId && event.device.productId === connected.productId && event.device.serialNumber === connected.serialNumber);
+      if (sameDevice) {
+        void handlePassiveDisconnect("Device disconnected. Reconnect to continue.");
+      }
+    };
+    navigator.usb.addEventListener("disconnect", onUsbDisconnect);
+    return () => navigator.usb.removeEventListener("disconnect", onUsbDisconnect);
+  }, [webUsbAvailable, handlePassiveDisconnect]);
+
+  useEffect(() => {
+    if (!connectedInfo || !clientRef.current) return;
+    if (status.state === "flashing" || status.state === "compiling" || status.state === "requesting") return;
+    let cancelled = false;
+    const intervalId = window.setInterval(async () => {
+      if (cancelled) return;
+      try {
+        await clientRef.current?.ping();
+      } catch {
+        if (cancelled) return;
+        await handlePassiveDisconnect("Device became inactive. Reconnect to continue.");
+      }
+    }, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [connectedInfo, status.state, handlePassiveDisconnect]);
 
   const handlePickFile = useCallback(() => {
     if (!clientRef.current) {
@@ -442,7 +539,7 @@ export default function CH55xBootloaderMinimal() {
   }, [flashBytes, debugFirmware, selectedLayout, selectedProfile, currentBindings]);
 
   const unsupportedDevice = connectedInfo != null && selectedProfile == null;
-  const userButtons = selectedLayout ? selectedLayout.buttons.filter((b) => !b.bootloaderOnBoot) : [];
+  const userButtons = selectedLayout ? selectedLayout.buttons : [];
   const buttonCount = userButtons.length;
   const encoderCount = selectedLayout?.encoders.length ?? 0;
   const sortedButtons = [...userButtons].sort((a, b) => a.id - b.id);
@@ -660,6 +757,59 @@ export default function CH55xBootloaderMinimal() {
     setEditTarget(null);
   };
 
+  const updateBootloaderOnBoot = (target: EditTarget, value: boolean) => {
+    setSelectedLayout((prev) => {
+      if (!prev) return prev;
+      if (target.type === "button") {
+        return {
+          ...prev,
+          buttons: prev.buttons.map((b) => (b.id === target.buttonId ? { ...b, bootloaderOnBoot: value } : b)),
+        };
+      }
+      if (target.type === "encoder" && target.direction === "press") {
+        return {
+          ...prev,
+          encoders: prev.encoders.map((e) => (e.id === target.encoderId && e.press
+            ? { ...e, press: { ...e.press, bootloaderOnBoot: value } }
+            : e)),
+        };
+      }
+      return prev;
+    });
+  };
+
+  const updateBootloaderChordMember = (target: EditTarget, value: boolean) => {
+    setSelectedLayout((prev) => {
+      if (!prev) return prev;
+      if (target.type === "button") {
+        return {
+          ...prev,
+          buttons: prev.buttons.map((b) => (b.id === target.buttonId ? { ...b, bootloaderChordMember: value } : b)),
+        };
+      }
+      if (target.type === "encoder" && target.direction === "press") {
+        return {
+          ...prev,
+          encoders: prev.encoders.map((e) => (e.id === target.encoderId && e.press
+            ? { ...e, press: { ...e.press, bootloaderChordMember: value } }
+            : e)),
+        };
+      }
+      return prev;
+    });
+  };
+
+  const resetToDefaults = () => {
+    if (!selectedProfile) return;
+    const nextBindings = selectedProfile.defaultBindings ?? null;
+    const nextLayout = selectedProfile.layout ? cloneLayout(selectedProfile.layout) : null;
+    setCurrentBindings(nextBindings);
+    setSelectedLayout(nextLayout);
+    if (connectedInfo) {
+      saveStoredConfig(connectedInfo.id, { bindings: nextBindings, layout: nextLayout });
+    }
+  };
+
   const closeEdit = () => {
     setCapturingStepIndex(null);
     setEditTarget(null);
@@ -670,6 +820,17 @@ export default function CH55xBootloaderMinimal() {
       : [buttonCount])
     : [];
   const { rows: layoutRows } = validateFixedRows(baseRows, buttonCount);
+
+  const bootloaderOnBootCount = selectedLayout
+    ? selectedLayout.buttons.filter((b) => b.bootloaderOnBoot).length
+      + selectedLayout.encoders.filter((e) => e.press && e.press.bootloaderOnBoot).length
+    : 0;
+  const bootloaderChordCount = selectedLayout
+    ? selectedLayout.buttons.filter((b) => b.bootloaderChordMember).length
+      + selectedLayout.encoders.filter((e) => e.press && e.press.bootloaderChordMember).length
+    : 0;
+  const warnNoBootEntry = Boolean(selectedLayout && bootloaderOnBootCount === 0 && bootloaderChordCount === 0);
+  const warnSingleChord = Boolean(selectedLayout && bootloaderChordCount === 1);
 
   const statusBanner = (() => {
     switch (status.state) {
@@ -695,6 +856,8 @@ export default function CH55xBootloaderMinimal() {
         return { tone: "error" as const, title: "File upload not supported in this browser." };
       case "needConnect":
         return { tone: "warn" as const, title: "Connect bootloader first", body: "Click Connect and approve the prompt." };
+      case "deviceLost":
+        return { tone: "warn" as const, title: "Device disconnected", body: status.detail ?? "Reconnect to continue." };
       case "error":
         return { tone: "error" as const, title: "Error", body: status.detail };
       default:
@@ -797,8 +960,20 @@ export default function CH55xBootloaderMinimal() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Layout</div>
-              <div className="muted small">Click any button or encoder tile to change its binding.</div>
+              <div className="muted small">Click any button or encoder tile to change its binding. Bootloader chord = combo you press anytime to jump into bootloader (vs. on-boot, which is only at plug-in).</div>
+              {selectedProfile?.defaultBindings && (
+                <button className="btn ghost" onClick={resetToDefaults}>Reset to defaults</button>
+              )}
             </div>
+            {(warnNoBootEntry || warnSingleChord) && (
+              <div className="status-banner status-warn" style={{ marginTop: "0.5rem" }}>
+                <div className="status-title">Bootloader entry tips</div>
+                <div className="status-body">
+                  {warnNoBootEntry && <div>No bootloader entry configured. Enable on-boot or add a chord so you can re-enter bootloader.</div>}
+                  {warnSingleChord && <div>Bootloader chord has only one member; add another to avoid accidental triggers.</div>}
+                </div>
+              </div>
+            )}
             <div className="layout-preview">
               <div className="encoder-column">
                 {encoderCount === 0 && <div className="muted small">No encoders</div>}
@@ -868,6 +1043,46 @@ export default function CH55xBootloaderMinimal() {
                 <div className="muted small">Direction: {editTarget.direction.toUpperCase()} {editTarget.direction === "cw" ? "(Clockwise)" : editTarget.direction === "ccw" ? "(Counter-Clockwise)" : ""}</div>
               )}
               <div className="modal-body">
+                {(() => {
+                  if (!selectedLayout) return null;
+                  let onBoot: boolean | null = null;
+                  let chord: boolean | null = null;
+                  if (editTarget.type === "button") {
+                    const btn = selectedLayout.buttons.find((b) => b.id === editTarget.buttonId);
+                    onBoot = btn ? Boolean(btn.bootloaderOnBoot) : null;
+                    chord = btn ? Boolean(btn.bootloaderChordMember) : null;
+                  } else if (editTarget.type === "encoder" && editTarget.direction === "press") {
+                    const enc = selectedLayout.encoders.find((e) => e.id === editTarget.encoderId);
+                    onBoot = enc?.press ? Boolean(enc.press.bootloaderOnBoot) : null;
+                    chord = enc?.press ? Boolean(enc.press.bootloaderChordMember) : null;
+                  }
+                  if (onBoot == null && chord == null) return null;
+                  return (
+                    <div className="stack" style={{ gap: "0.35rem", marginBottom: "0.75rem" }}>
+                      {onBoot != null && (
+                        <label className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={onBoot}
+                            onChange={(e) => updateBootloaderOnBoot(editTarget, e.target.checked)}
+                          />
+                          Bootloader on boot (hold at power-up)
+                        </label>
+                      )}
+                      {chord != null && (
+                        <label className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={chord}
+                            onChange={(e) => updateBootloaderChordMember(editTarget, e.target.checked)}
+                          />
+                          Part of bootloader chord
+                        </label>
+                      )}
+                      <div className="muted small">Bootloader chord = the combo you can press any time to enter bootloader without replugging. On-boot triggers only while plugging in; chord members reduce accidental triggers.</div>
+                    </div>
+                  );
+                })()}
                 <div className="steps-list">
                   {editSteps.length === 0 && <div className="muted small">No steps yet. Add a key, mouse action, function, or pause.</div>}
                   {editSteps.map((step, idx) => {

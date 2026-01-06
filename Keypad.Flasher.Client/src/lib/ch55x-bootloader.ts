@@ -254,6 +254,26 @@ export class CH55xBootloader {
     return { version: ver, id, deviceIdHex: toHex(devId) };
   }
 
+  getConnectedDevice(): USBDevice | null {
+    return this.device;
+  }
+
+  async ping(): Promise<void> {
+    const device = this.device;
+    const epIn = this.epIn;
+    const epOut = this.epOut;
+    if (!device || epIn == null || epOut == null) throw new Error("Connect bootloader first.");
+    await device.transferOut(epOut, bootloaderIDCmd.buffer);
+    await device.transferIn(epIn, 64);
+  }
+
+  async runApplication(): Promise<void> {
+    const device = this.device;
+    const epOut = this.epOut;
+    if (!device || epOut == null) throw new Error("Connect bootloader first.");
+    await device.transferOut(epOut, bootloaderResetCmd.buffer);
+  }
+
   async flashIntelHexText(text: string, bufferSize = 63 * 1024, onProgress?: ProgressCb): Promise<void> {
     const { data } = parseIntelHexBrowser(text, bufferSize);
     return this.flashBinary(data, onProgress);

@@ -5,11 +5,8 @@ This project contains custom firmware compatible with a number of different CH55
 ## TODO
 
 This project is work in progress, what's left to do:
-- Handle / fix passive disconnections from CH55x bootloader during inactivity
 - Add support for copy/pasting/reordering steps
-- Add support for saving/loading configuration to local storage or files
 - Add LED configuration and effects
-- Add UI options for the bootloader mode chord and bootloader on boot settings
 - Build the adapter to easily enter bootloader mode without opening the device up or making the contraption manually
 - Probably some other stuff I've forgotten about
 
