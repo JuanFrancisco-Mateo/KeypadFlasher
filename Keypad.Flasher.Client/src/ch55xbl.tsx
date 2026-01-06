@@ -26,6 +26,109 @@ const MODIFIER_BITS = [
   { bit: 8, label: "Win" },
 ];
 
+type KeyOption = { value: number; label: string };
+type KeyOptionGroup = { label: string; options: KeyOption[] };
+
+const LETTER_KEYS: KeyOption[] = "abcdefghijklmnopqrstuvwxyz".split("").map((ch) => ({ value: ch.charCodeAt(0), label: ch.toUpperCase() }));
+const NUMBER_KEYS: KeyOption[] = "0123456789".split("").map((ch) => ({ value: ch.charCodeAt(0), label: ch }));
+const SYMBOL_KEYS: KeyOption[] = [
+  { value: " ".charCodeAt(0), label: "Space" },
+  { value: "-".charCodeAt(0), label: "-" },
+  { value: "=".charCodeAt(0), label: "=" },
+  { value: "[".charCodeAt(0), label: "[" },
+  { value: "]".charCodeAt(0), label: "]" },
+  { value: "\\".charCodeAt(0), label: "\\" },
+  { value: ";".charCodeAt(0), label: ";" },
+  { value: "'".charCodeAt(0), label: "'" },
+  { value: "`".charCodeAt(0), label: "`" },
+  { value: ",".charCodeAt(0), label: "," },
+  { value: ".".charCodeAt(0), label: "." },
+  { value: "/".charCodeAt(0), label: "/" },
+];
+
+const NAV_KEYS: KeyOption[] = [
+  { value: 0xb0, label: "Enter" },
+  { value: 0xb1, label: "Escape" },
+  { value: 0xb2, label: "Backspace" },
+  { value: 0xb3, label: "Tab" },
+  { value: 0xc1, label: "Caps Lock" },
+  { value: 0xd1, label: "Insert" },
+  { value: 0xd4, label: "Delete" },
+  { value: 0xd2, label: "Home" },
+  { value: 0xd5, label: "End" },
+  { value: 0xd3, label: "Page Up" },
+  { value: 0xd6, label: "Page Down" },
+  { value: 0xd7, label: "Arrow Right" },
+  { value: 0xd8, label: "Arrow Left" },
+  { value: 0xd9, label: "Arrow Down" },
+  { value: 0xda, label: "Arrow Up" },
+];
+
+const FUNCTION_KEYS: KeyOption[] = [
+  ...Array.from({ length: 12 }, (_, idx) => ({ value: 0xc2 + idx, label: `F${idx + 1}` })),
+  ...Array.from({ length: 12 }, (_, idx) => ({ value: 0xf0 + idx, label: `F${idx + 13}` })),
+];
+
+const KEY_OPTION_GROUPS: KeyOptionGroup[] = [
+  { label: "Letters", options: LETTER_KEYS },
+  { label: "Numbers", options: NUMBER_KEYS },
+  { label: "Symbols", options: SYMBOL_KEYS },
+  { label: "Navigation", options: NAV_KEYS },
+  { label: "Function keys", options: FUNCTION_KEYS },
+];
+
+const KEY_OPTION_LOOKUP = new Map<number, KeyOption>();
+KEY_OPTION_GROUPS.forEach((group) => group.options.forEach((opt) => {
+  if (!KEY_OPTION_LOOKUP.has(opt.value)) {
+    KEY_OPTION_LOOKUP.set(opt.value, opt);
+  }
+}));
+
+const KEY_EVENT_CODES: Record<string, number> = (() => {
+  const base: Record<string, number> = {
+    Backspace: 0xb2,
+    Tab: 0xb3,
+    Enter: 0xb0,
+    NumpadEnter: 0xb0,
+    Escape: 0xb1,
+    Delete: 0xd4,
+    Del: 0xd4,
+    Insert: 0xd1,
+    Home: 0xd2,
+    End: 0xd5,
+    PageUp: 0xd3,
+    PageDown: 0xd6,
+    ArrowUp: 0xda,
+    ArrowDown: 0xd9,
+    ArrowLeft: 0xd8,
+    ArrowRight: 0xd7,
+    CapsLock: 0xc1,
+  };
+  for (let i = 1; i <= 12; i += 1) {
+    base[`F${i}`] = 0xc1 + i;
+  }
+  for (let i = 13; i <= 24; i += 1) {
+    base[`F${i}`] = 0xf0 + (i - 13);
+  }
+  return base;
+})();
+
+const keyLabelFromCode = (code: number): string => {
+  if (!code) return "";
+  const opt = KEY_OPTION_LOOKUP.get(code);
+  if (opt) return opt.label;
+  if (code >= 32 && code <= 126) return String.fromCharCode(code).toUpperCase();
+  return `Key ${code}`;
+};
+
+const keyboardEventToKeycode = (event: KeyboardEvent): number | null => {
+  const mapped = KEY_EVENT_CODES[event.key] ?? KEY_EVENT_CODES[event.code];
+  if (mapped != null) return mapped;
+  if (!event.key) return null;
+  if (event.key.length !== 1) return null;
+  return event.key.toLowerCase().charCodeAt(0);
+};
+
 const describeStep = (step: HidStepDto): string => {
   if (step.kind === "Pause") {
     const pauseMs = step.gapMs > 0 ? step.gapMs : 0;
@@ -49,17 +152,8 @@ const describeStep = (step: HidStepDto): string => {
     }
   }
   const mods = MODIFIER_BITS.filter((m) => (step.modifiers & m.bit) !== 0).map((m) => m.label);
-  const keyChar = step.keycode >= 32 && step.keycode <= 126 ? String.fromCharCode(step.keycode) : `Key${step.keycode}`;
-  return mods.length > 0 ? `${mods.join("+")}+${keyChar}` : keyChar;
-};
-
-const keycodeToInput = (step: HidStepDto): string => {
-  if (step.kind === "Mouse") return "Mouse";
-  if (step.kind === "Function") return "Fn";
-  if (step.kind !== "Key") return "";
-  if (step.keycode === 0) return "";
-  if (step.keycode >= 32 && step.keycode <= 126) return String.fromCharCode(step.keycode).toLowerCase();
-  return String(step.keycode);
+  const keyLabel = keyLabelFromCode(step.keycode);
+  return mods.length > 0 ? `${mods.join("+")}+${keyLabel}` : keyLabel;
 };
 
 const defaultMouseValue = (pointerType: HidPointerType): number => {
@@ -142,13 +236,14 @@ export default function CH55xBootloaderMinimal() {
     if (!editTarget) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (capturingStepIndex != null) return;
         event.preventDefault();
         closeEdit();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [editTarget]);
+  }, [editTarget, capturingStepIndex]);
 
   useEffect(() => {
     if (!devMode && debugFirmware) {
@@ -166,11 +261,9 @@ export default function CH55xBootloaderMinimal() {
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.key) return;
-      if (event.key.length !== 1) return;
+      const code = keyboardEventToKeycode(event);
+      if (code == null) return;
       event.preventDefault();
-      const ch = event.key.toLowerCase();
-      const code = ch.charCodeAt(0);
       setEditSteps((prev) => prev.map((s, i) => {
         if (i !== capturingStepIndex) return s;
         if (s.kind !== "Key") return s;
@@ -774,49 +867,77 @@ export default function CH55xBootloaderMinimal() {
                           <button className="btn ghost" onClick={() => removeStep(idx)}>Remove</button>
                         </div>
                         <div className="step-kind-toggle">
-                          <button className={`btn ghost${kind === "Key" ? " active" : ""}`} onClick={() => setStepKind(idx, "Key")}>Key step</button>
+                          <button className={`btn ghost${kind === "Key" ? " active" : ""}`} onClick={() => setStepKind(idx, "Key")}>Key</button>
                           <button className={`btn ghost${kind === "Pause" ? " active" : ""}`} onClick={() => setStepKind(idx, "Pause")}>Pause</button>
                           <button className={`btn ghost${kind === "Mouse" ? " active" : ""}`} onClick={() => setStepKind(idx, "Mouse")}>Mouse</button>
                           <button className={`btn ghost${kind === "Function" ? " active" : ""}`} onClick={() => setStepKind(idx, "Function")}>Function</button>
                         </div>
                         {kind === "Pause" && (
-                          <div className="timing-row">
-                            <label className="inline-input">
-                              <span className="input-label">Pause (ms)</span>
-                              <input
-                                className="text-input"
-                                type="number"
-                                min={0}
-                                value={step.gapMs}
-                                onChange={(e) => updateStepTiming(idx, "gapMs", e.target.value)}
-                              />
-                            </label>
+                          <>
+                            <div className="timing-row">
+                              <label className="inline-input">
+                                <span className="input-label">Pause (ms)</span>
+                                <input
+                                  className="text-input"
+                                  type="number"
+                                  min={0}
+                                  value={step.gapMs}
+                                  onChange={(e) => updateStepTiming(idx, "gapMs", e.target.value)}
+                                />
+                              </label>
+                            </div>
                             <div className="muted small pause-help">This pause waits before the next step.</div>
-                          </div>
+                          </>
                         )}
                         {kind === "Key" && (
                           <>
                             <div className="input-row">
                               <span className="input-label">Key</span>
                               <div className="key-row">
-                                <div className={`key-capture${capturingStepIndex === idx ? " capturing" : ""}`} onClick={() => setCapturingStepIndex(idx)}>
-                                  <span className="key-capture-label">{capturingStepIndex === idx ? "Press a key…" : keycodeToInput(step) || "Click to capture"}</span>
-                                </div>
-                                <div className="checkbox-row tight">
-                                  {MODIFIER_BITS.map((m) => (
-                                    <label key={m.bit} className="checkbox">
-                                      <input
-                                        type="checkbox"
-                                        checked={(step.modifiers & m.bit) !== 0}
-                                        onChange={() => toggleStepModifier(idx, m.bit)}
-                                      />
-                                      {m.label}
-                                    </label>
-                                  ))}
+                                <label className="inline-input key-select">
+                                  <span className="input-label">Pick from list</span>
+                                  <select
+                                    className="text-input"
+                                    value={KEY_OPTION_LOOKUP.has(step.keycode) ? String(step.keycode) : ""}
+                                    onChange={(e) => {
+                                      const parsed = Number(e.target.value);
+                                      if (!Number.isFinite(parsed)) return;
+                                      setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Key" ? { ...s, keycode: parsed } : s)));
+                                    }}
+                                  >
+                                    <option value="">Select a key…</option>
+                                    {KEY_OPTION_GROUPS.map((group) => (
+                                      <optgroup key={group.label} label={group.label}>
+                                        {group.options.map((opt) => (
+                                          <option key={`${group.label}-${opt.value}`} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                    {!KEY_OPTION_LOOKUP.has(step.keycode) && step.keycode !== 0 && (
+                                      <option value={step.keycode}>Current: {keyLabelFromCode(step.keycode)}</option>
+                                    )}
+                                  </select>
+                                </label>
+                                <div className="key-actions">
+                                  <button className={`btn ghost${capturingStepIndex === idx ? " active" : ""}`} onClick={() => setCapturingStepIndex(idx)}>
+                                    {capturingStepIndex === idx ? "Capturing…" : "Capture from keyboard"}
+                                  </button>
                                 </div>
                               </div>
+                              <div className="checkbox-row tight">
+                                {MODIFIER_BITS.map((m) => (
+                                  <label key={m.bit} className="checkbox">
+                                    <input
+                                      type="checkbox"
+                                      checked={(step.modifiers & m.bit) !== 0}
+                                      onChange={() => toggleStepModifier(idx, m.bit)}
+                                    />
+                                    {m.label}
+                                  </label>
+                                ))}
+                              </div>
                               {capturingStepIndex != null && capturingStepIndex !== idx && <div className="muted small">Finish current capture first.</div>}
-                              <div className="muted small">Only one character per step; uppercase input is stored as lowercase unless you add Shift.</div>
+                              <div className="muted small">Add Shift for uppercase or symbols that need it.</div>
                             </div>
                             <div className="timing-row">
                               <label className="inline-input">

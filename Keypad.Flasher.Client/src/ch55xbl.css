@@ -592,9 +592,30 @@
 .key-row {
     display: flex;
     gap: 10px;
-    align-items: center;
+    align-items: flex-end;
     flex-wrap: wrap;
     margin-bottom: 8px;
+}
+
+.key-select {
+    flex: 1;
+    min-width: 220px;
+}
+
+.key-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    justify-content: flex-end;
+    min-width: 180px;
+}
+
+.key-actions .btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .key-row + .timing-row {
