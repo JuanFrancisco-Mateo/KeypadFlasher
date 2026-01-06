@@ -11,9 +11,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'0'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '0',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -26,9 +34,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'1'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '1',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -41,9 +57,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'2'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '2',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -56,9 +80,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'3'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '3',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -71,9 +103,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'4'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '4',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -86,9 +126,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'5'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '5',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -101,9 +149,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'6'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '6',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -116,9 +172,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'7'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '7',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -131,9 +195,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'8'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '8',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -146,9 +218,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'9'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '9',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     }

@@ -24,78 +24,88 @@ static void hid_run_key_sequence(hid_key_sequence_t sequence, hid_trigger_mode_t
 
   for (i = 0; i < sequence.length; i++)
   {
-    uint8_t mods = sequence.steps[i].modifiers;
-    uint8_t hold_ms = sequence.steps[i].hold_ms;
-    uint8_t gap_ms = sequence.steps[i].gap_ms;
-    uint8_t key = sequence.steps[i].keycode;
-
-    if (mods & 0x01) Keyboard_press(KEY_LEFT_CTRL);
-    if (mods & 0x02) Keyboard_press(KEY_LEFT_SHIFT);
-    if (mods & 0x04) Keyboard_press(KEY_LEFT_ALT);
-    if (mods & 0x08) Keyboard_press(KEY_LEFT_GUI);
-
-    Keyboard_press(key);
-    if (hold_ms == 0)
+    hid_key_step_t *step = &sequence.steps[i];
+    switch (step->kind)
     {
-      hold_ms = 10; // default hold for reliability
-    }
-    delay(hold_ms);
-    Keyboard_releaseAll();
-
-    if (gap_ms > 0)
-    {
-      delay(gap_ms);
-    }
-  }
-}
-
-static void hid_run_mouse_sequence(hid_mouse_macro_t sequence, hid_trigger_mode_t mode)
-{
-  if (mode == HID_TRIGGER_RELEASE)
-  {
-    return;
-  }
-  if (sequence.keypress > 0)
-  {
-    Keyboard_press(sequence.keypress);
-    delay(30);
-  }
-  for (uint8_t i = 0; i < sequence.length; i++)
-  {
-    switch (sequence.mouse_event_sequence[i].type)
-    {
-    case HID_POINTER_MOVE_UP:
-      Mouse_move(0, -sequence.mouse_event_sequence[i].value);
+    case HID_STEP_PAUSE:
+      if (step->gap_ms > 0)
+      {
+        delay(step->gap_ms);
+      }
       break;
-    case HID_POINTER_MOVE_DOWN:
-      Mouse_move(0, sequence.mouse_event_sequence[i].value);
+    case HID_STEP_MOUSE:
+      switch (step->pointer_type)
+      {
+      case HID_POINTER_MOVE_UP:
+        Mouse_move(0, -(int8_t)step->pointer_value);
+        break;
+      case HID_POINTER_MOVE_DOWN:
+        Mouse_move(0, (int8_t)step->pointer_value);
+        break;
+      case HID_POINTER_MOVE_LEFT:
+        Mouse_move(-(int8_t)step->pointer_value, 0);
+        break;
+      case HID_POINTER_MOVE_RIGHT:
+        Mouse_move((int8_t)step->pointer_value, 0);
+        break;
+      case HID_POINTER_LEFT_CLICK:
+        Mouse_click(MOUSE_LEFT);
+        break;
+      case HID_POINTER_RIGHT_CLICK:
+        Mouse_click(MOUSE_RIGHT);
+        break;
+      case HID_POINTER_SCROLL_UP:
+        Mouse_scroll(step->pointer_value);
+        break;
+      case HID_POINTER_SCROLL_DOWN:
+        Mouse_scroll(-(int8_t)step->pointer_value);
+        break;
+      default:
+        break;
+      }
+      if (step->gap_ms > 0)
+      {
+        delay(step->gap_ms);
+      }
       break;
-    case HID_POINTER_MOVE_LEFT:
-      Mouse_move(-sequence.mouse_event_sequence[i].value, 0);
+    case HID_STEP_FUNCTION:
+      if (step->functionPointer)
+      {
+        step->functionPointer(mode);
+      }
+      if (step->gap_ms > 0)
+      {
+        delay(step->gap_ms);
+      }
       break;
-    case HID_POINTER_MOVE_RIGHT:
-      Mouse_move(sequence.mouse_event_sequence[i].value, 0);
-      break;
-    case HID_POINTER_LEFT_CLICK:
-      Mouse_click(MOUSE_LEFT);
-      break;
-    case HID_POINTER_RIGHT_CLICK:
-      Mouse_click(MOUSE_RIGHT);
-      break;
-    case HID_POINTER_SCROLL_UP:
-      Mouse_scroll(sequence.mouse_event_sequence[i].value);
-      break;
-    case HID_POINTER_SCROLL_DOWN:
-      Mouse_scroll(-sequence.mouse_event_sequence[i].value);
-      break;
+    case HID_STEP_KEY:
     default:
+    {
+      uint8_t mods = step->modifiers;
+      uint8_t hold_ms = step->hold_ms;
+      uint8_t gap_ms = step->gap_ms;
+      uint8_t key = step->keycode;
+
+      if (mods & 0x01) Keyboard_press(KEY_LEFT_CTRL);
+      if (mods & 0x02) Keyboard_press(KEY_LEFT_SHIFT);
+      if (mods & 0x04) Keyboard_press(KEY_LEFT_ALT);
+      if (mods & 0x08) Keyboard_press(KEY_LEFT_GUI);
+
+      Keyboard_press(key);
+      if (hold_ms == 0)
+      {
+        hold_ms = 10; // default hold for reliability
+      }
+      delay(hold_ms);
+      Keyboard_releaseAll();
+
+      if (gap_ms > 0)
+      {
+        delay(gap_ms);
+      }
       break;
     }
-    if (sequence.keypress > 0)
-    {
-      Keyboard_releaseAll();
     }
-    delay(sequence.delay);
   }
 }
 
@@ -105,12 +115,6 @@ static void hid_run_binding(const hid_binding_t *binding, hid_trigger_mode_t mod
   {
   case HID_BINDING_SEQUENCE:
     hid_run_key_sequence(binding->function.sequence, mode);
-    break;
-  case HID_BINDING_MOUSE:
-    hid_run_mouse_sequence(binding->function.mouse, mode);
-    break;
-  case HID_BINDING_FUNCTION:
-    binding->function.functionPointer(mode);
     break;
   case HID_BINDING_NULL:
   default:

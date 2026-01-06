@@ -1,25 +1,69 @@
+using System;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace Keypad.Flasher.Server.Configuration
 {
     public enum HidBindingType
     {
-        Sequence,
-        Function
+        Sequence
     }
 
-    public sealed record HidKeyStep(byte Keycode, byte Modifiers, byte HoldMs, byte GapMs);
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum HidStepKind
+    {
+        Key,
+        Pause,
+        Function,
+        Mouse
+    }
+
+    public sealed record HidStep(
+        HidStepKind Kind,
+        byte Keycode,
+        byte Modifiers,
+        byte HoldMs,
+        byte GapMs,
+        byte PointerType,
+        byte PointerValue,
+        string? FunctionPointer = null)
+    {
+        public static HidStep Key(byte keycode, byte modifiers = 0, byte holdMs = 10, byte gapMs = 10)
+            => new(HidStepKind.Key, keycode, modifiers, holdMs, gapMs, 0, 0, null);
+
+        public static HidStep Pause(byte gapMs)
+            => new(HidStepKind.Pause, 0, 0, 0, gapMs, 0, 0, null);
+
+        public static HidStep Function(string functionPointer, byte gapMs = 0)
+            => new(HidStepKind.Function, 0, 0, 0, gapMs, 0, 0, functionPointer);
+
+        public static HidStep Mouse(byte pointerType, byte pointerValue, byte gapMs = 0)
+            => new(HidStepKind.Mouse, 0, 0, 0, gapMs, pointerType, pointerValue, null);
+    }
 
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
     [JsonDerivedType(typeof(HidSequenceBinding), "Sequence")]
-    [JsonDerivedType(typeof(HidFunctionBinding), "Function")]
     public abstract record HidBinding([property: JsonIgnore] HidBindingType Type);
 
-    public sealed record HidSequenceBinding(IReadOnlyList<HidKeyStep> Steps)
-        : HidBinding(HidBindingType.Sequence);
+    public sealed record HidSequenceBinding : HidBinding
+    {
+        [JsonConstructor]
+        public HidSequenceBinding(IReadOnlyList<HidStep> steps)
+            : base(HidBindingType.Sequence)
+        {
+            Steps = steps ?? Array.Empty<HidStep>();
+        }
 
-    public sealed record HidFunctionBinding(string FunctionPointer)
-        : HidBinding(HidBindingType.Function);
+        public IReadOnlyList<HidStep> Steps { get; init; }
+
+        public HidSequenceBinding(string sequence, byte modifiers = 0)
+            : this(sequence.Select(ch => HidStep.Key((byte)ch, modifiers)).ToList())
+        {
+        }
+
+        public static HidSequenceBinding FromFunction(string functionPointer, byte gapMs = 0)
+            => new(new[] { HidStep.Function(functionPointer, gapMs) });
+    }
 
     public sealed record ButtonBinding(
         int Pin,

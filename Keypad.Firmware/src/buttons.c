@@ -74,10 +74,6 @@ void buttons_update(void)
             button_state_s[i] = active;
         }
 
-        if (button_bindings[i].function.type == HID_BINDING_FUNCTION && button_state_s[i] && !active)
-        {
-            hid_handle_button(i, HID_TRIGGER_CLICK);
-        }
     }
 
     if (has_bootloader_chord && bootloader_chord_candidate)

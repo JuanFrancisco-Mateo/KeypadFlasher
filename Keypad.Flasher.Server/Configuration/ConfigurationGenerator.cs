@@ -168,34 +168,52 @@ namespace Keypad.Flasher.Server.Configuration
 
         private static void AppendBindingContent(StringBuilder sb, int indentLevel, HidBinding binding)
         {
-            switch (binding)
+            if (binding is not HidSequenceBinding sequenceBinding)
             {
-                case HidSequenceBinding sequenceBinding:
-                    AppendLine(sb, indentLevel, ".type = HID_BINDING_SEQUENCE,");
-                    AppendLine(sb, indentLevel, ".function.sequence = {");
-                    AppendLine(sb, indentLevel + 1, ".steps = {");
-                    for (int i = 0; i < sequenceBinding.Steps.Count; i++)
-                    {
-                        var step = sequenceBinding.Steps[i];
-                        var isLast = i == sequenceBinding.Steps.Count - 1;
-                        AppendLine(sb, indentLevel + 2, "{");
-                        AppendLine(sb, indentLevel + 3, $".keycode = {step.Keycode},");
-                        AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
-                        AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
-                        AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs}");
-                        AppendLine(sb, indentLevel + 2, isLast ? "}" : "},");
-                    }
-                    AppendLine(sb, indentLevel + 1, "},");
-                    AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Steps.Count}");
-                    AppendLine(sb, indentLevel, "}");
-                    break;
-                case HidFunctionBinding functionBinding:
-                    AppendLine(sb, indentLevel, ".type = HID_BINDING_FUNCTION,");
-                    AppendLine(sb, indentLevel, $".function.functionPointer = {functionBinding.FunctionPointer}");
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unsupported binding type: {binding.GetType().Name}");
+                throw new InvalidOperationException($"Unsupported binding type: {binding.GetType().Name}");
             }
+
+            AppendLine(sb, indentLevel, ".type = HID_BINDING_SEQUENCE,");
+            AppendLine(sb, indentLevel, ".function.sequence = {");
+            AppendLine(sb, indentLevel + 1, ".steps = {");
+            for (int i = 0; i < sequenceBinding.Steps.Count; i++)
+            {
+                var step = sequenceBinding.Steps[i];
+                var isLast = i == sequenceBinding.Steps.Count - 1;
+                var kindLiteral = step.Kind switch
+                {
+                    HidStepKind.Key => "HID_STEP_KEY",
+                    HidStepKind.Pause => "HID_STEP_PAUSE",
+                    HidStepKind.Function => "HID_STEP_FUNCTION",
+                    HidStepKind.Mouse => "HID_STEP_MOUSE",
+                    _ => throw new InvalidOperationException($"Unsupported step kind: {step.Kind}")
+                };
+                var functionPointer = step.Kind == HidStepKind.Function
+                    ? step.FunctionPointer ?? throw new InvalidOperationException("Function steps must specify a functionPointer.")
+                    : "0";
+                var keycodeLiteral = step.Kind == HidStepKind.Key
+                    ? ToCharLiteral((char)step.Keycode)
+                    : step.Keycode.ToString();
+                var pointerType = step.Kind == HidStepKind.Mouse ? step.PointerType : (byte)0;
+                var pointerTypeLiteral = pointerType.ToString();
+                var pointerValue = step.Kind == HidStepKind.Mouse
+                    ? (pointerType >= 4 && pointerType <= 5 ? 0 : step.PointerValue)
+                    : 0;
+
+                AppendLine(sb, indentLevel + 2, "{");
+                AppendLine(sb, indentLevel + 3, $".kind = {kindLiteral},");
+                AppendLine(sb, indentLevel + 3, $".keycode = {keycodeLiteral},");
+                AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
+                AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
+                AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs},");
+                AppendLine(sb, indentLevel + 3, $".pointer_type = {pointerTypeLiteral},");
+                AppendLine(sb, indentLevel + 3, $".pointer_value = {pointerValue},");
+                AppendLine(sb, indentLevel + 3, $".functionPointer = {functionPointer}");
+                AppendLine(sb, indentLevel + 2, isLast ? "}" : "},");
+            }
+            AppendLine(sb, indentLevel + 1, "},");
+            AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Steps.Count}");
+            AppendLine(sb, indentLevel, "}");
         }
 
         private static void AppendLine(StringBuilder sb, int indentLevel, string text)
@@ -221,5 +239,6 @@ namespace Keypad.Flasher.Server.Configuration
                 _ => $"'{value}'"
             };
         }
+
     }
 }

@@ -11,9 +11,49 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'e', 'n', 't', 'e', 'r'},
-                .length = 5,
-                .delay = 5
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'e',
+                        .modifiers = 5,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    },
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'n',
+                        .modifiers = 5,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    },
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 't',
+                        .modifiers = 5,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    },
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'e',
+                        .modifiers = 5,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    },
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'r',
+                        .modifiers = 5,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 5
             }
         }
     },
@@ -26,9 +66,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'a'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'a',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -41,9 +89,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'b'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'b',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -56,9 +112,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'c'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = 'c',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     }
@@ -71,12 +135,36 @@ const encoder_binding_t encoder_bindings[] = {
         .pin_a = 31,
         .pin_b = 30,
         .clockwise = {
-            .type = HID_BINDING_FUNCTION,
-            .function.functionPointer = hid_consumer_volume_up
+            .type = HID_BINDING_SEQUENCE,
+            .function.sequence = {
+                .steps = {
+                    {
+                        .kind = HID_STEP_FUNCTION,
+                        .keycode = 0,
+                        .modifiers = 0,
+                        .hold_ms = 0,
+                        .gap_ms = 0,
+                        .functionPointer = hid_consumer_volume_up
+                    }
+                },
+                .length = 1
+            }
         },
         .counter_clockwise = {
-            .type = HID_BINDING_FUNCTION,
-            .function.functionPointer = hid_consumer_volume_down
+            .type = HID_BINDING_SEQUENCE,
+            .function.sequence = {
+                .steps = {
+                    {
+                        .kind = HID_STEP_FUNCTION,
+                        .keycode = 0,
+                        .modifiers = 0,
+                        .hold_ms = 0,
+                        .gap_ms = 0,
+                        .functionPointer = hid_consumer_volume_down
+                    }
+                },
+                .length = 1
+            }
         }
     }
 };

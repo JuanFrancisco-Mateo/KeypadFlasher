@@ -11,9 +11,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'1'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '1',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     },
@@ -26,9 +34,17 @@ const button_binding_t button_bindings[] = {
         .function = {
             .type = HID_BINDING_SEQUENCE,
             .function.sequence = {
-                .sequence = {'2'},
-                .length = 1,
-                .delay = 0
+                .steps = {
+                    {
+                        .kind = HID_STEP_KEY,
+                        .keycode = '2',
+                        .modifiers = 0,
+                        .hold_ms = 10,
+                        .gap_ms = 10,
+                        .functionPointer = 0
+                    }
+                },
+                .length = 1
             }
         }
     }

@@ -1,13 +1,19 @@
-export type HidKeyStepDto = {
-  keycode: number;
-  modifiers: number; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
-  holdMs: number;
-  gapMs: number;
-};
+export type HidStepDto =
+  | {
+      kind: "Key";
+      keycode: number;
+      modifiers: number; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
+      holdMs: number;
+      gapMs: number;
+      pointerType?: number;
+      pointerValue?: number;
+      functionPointer?: undefined;
+    }
+  | { kind: "Pause"; gapMs: number; pointerType?: number; pointerValue?: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: undefined }
+  | { kind: "Function"; functionPointer: string; gapMs: number; keycode?: number; modifiers?: number; holdMs?: number; pointerType?: number; pointerValue?: number }
+  | { kind: "Mouse"; pointerType: number; pointerValue: number; gapMs: number; keycode?: number; modifiers?: number; holdMs?: number; functionPointer?: string };
 
-export type HidBindingDto =
-  | { type: "Sequence"; steps: HidKeyStepDto[]; functionPointer?: undefined }
-  | { type: "Function"; steps?: undefined; functionPointer: string };
+export type HidBindingDto = { type: "Sequence"; steps: HidStepDto[] };
 
 export type InputLayoutDto = {
   pin: number;
@@ -43,9 +49,10 @@ export type BindingProfileDto = {
 
 export type KnownDeviceProfile = { name: string; layout: DeviceLayoutDto; defaultBindings: BindingProfileDto };
 
-const key = (ch: string, modifiers = 0): HidKeyStepDto => ({ keycode: ch.charCodeAt(0), modifiers, holdMs: 10, gapMs: 10 });
+const key = (ch: string, modifiers = 0): HidStepDto => ({ kind: "Key", keycode: ch.charCodeAt(0), modifiers, holdMs: 10, gapMs: 10 });
+const fnStep = (fn: string, gapMs = 0): HidStepDto => ({ kind: "Function", functionPointer: fn, gapMs });
 const seq = (sequence: string, modifiers = 0): HidBindingDto => ({ type: "Sequence", steps: sequence.split("").map((c) => key(c, modifiers)) });
-const func = (fn: string): HidBindingDto => ({ type: "Function", functionPointer: fn });
+const fnBinding = (fn: string): HidBindingDto => ({ type: "Sequence", steps: [fnStep(fn)] });
 
 export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
   "76-190-65-190": {
@@ -89,7 +96,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
         { id: 2, binding: seq("c", 0) },
       ],
       encoders: [
-        { id: 0, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down"), press: seq("enter", 5) },
+        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: seq("enter", 5) },
       ],
     },
   },
@@ -145,7 +152,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
         { id: 5, binding: seq("6", 0) },
       ],
       encoders: [
-        { id: 0, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down"), press: seq("Enter", 0) },
+        { id: 0, clockwise: fnBinding("hid_consumer_volume_up"), counterClockwise: fnBinding("hid_consumer_volume_down"), press: seq("Enter", 0) },
       ],
     },
   },

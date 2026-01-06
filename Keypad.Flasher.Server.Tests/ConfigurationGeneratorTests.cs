@@ -27,7 +27,7 @@ namespace Keypad.Flasher.Server.Tests
                         LedIndex: 0,
                         BootloaderOnBoot: true,
                         BootloaderChordMember: true,
-                        Function: new HidFunctionBinding("hid_consumer_volume_up"))
+                        Function: HidSequenceBinding.FromFunction("hid_consumer_volume_up"))
                 },
                 Array.Empty<EncoderBinding>(),
                 DebugMode: false,
@@ -192,7 +192,7 @@ namespace Keypad.Flasher.Server.Tests
 
             var encoders = new List<EncoderBinding>
             {
-                new EncoderBinding(10, 11, new HidFunctionBinding("hid_consumer_volume_up"), new HidFunctionBinding("hid_consumer_volume_down"))
+                new EncoderBinding(10, 11, HidSequenceBinding.FromFunction("hid_consumer_volume_up"), HidSequenceBinding.FromFunction("hid_consumer_volume_down"))
             };
 
             var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: true, NeoPixelPin: 34, NeoPixelReversed: false);
@@ -403,8 +403,8 @@ namespace Keypad.Flasher.Server.Tests
                 new EncoderBinding(
                     PinA: 31,
                     PinB: 30,
-                    Clockwise: new HidFunctionBinding("hid_consumer_volume_up"),
-                    CounterClockwise: new HidFunctionBinding("hid_consumer_volume_down"))
+                    Clockwise: HidSequenceBinding.FromFunction("hid_consumer_volume_up"),
+                    CounterClockwise: HidSequenceBinding.FromFunction("hid_consumer_volume_down"))
             };
 
             var configuration = new ConfigurationDefinition(buttons, encoders, DebugMode: false, NeoPixelPin: 34, NeoPixelReversed: false);

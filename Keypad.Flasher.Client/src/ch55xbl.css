@@ -602,3 +602,15 @@
     width: 0;
     pointer-events: none;
 }
+
+.mouse-value-input:disabled {
+    background: repeating-linear-gradient(135deg, var(--card-bg), var(--card-bg) 10px, var(--border-color) 10px, var(--border-color) 14px);
+    border-color: var(--border-color);
+    color: var(--muted-color);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.mouse-value-input:disabled::placeholder {
+    color: var(--muted-color);
+}

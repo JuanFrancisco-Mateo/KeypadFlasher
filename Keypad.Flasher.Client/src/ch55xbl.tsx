@@ -9,7 +9,7 @@ import {
   normalizeUsbErrorMessage,
 } from "./lib/ch55x-bootloader";
 import { findProfileForBootloaderId } from "./lib/keypad-configs";
-import type { BindingProfileDto, DeviceLayoutDto, HidBindingDto, HidKeyStepDto, KnownDeviceProfile } from "./lib/keypad-configs";
+import type { BindingProfileDto, DeviceLayoutDto, HidBindingDto, HidStepDto, KnownDeviceProfile } from "./lib/keypad-configs";
 import "./ch55xbl.css";
 
 const FRIENDLY_FUNCTIONS: Record<string, string> = {
@@ -24,18 +24,37 @@ const MODIFIER_BITS = [
   { bit: 8, label: "Win" },
 ];
 
-const describeStep = (step: HidKeyStepDto): string => {
-  const isDelayOnly = step.keycode === 0 && step.modifiers === 0;
-  if (isDelayOnly) {
+const describeStep = (step: HidStepDto): string => {
+  if (step.kind === "Pause") {
     const pauseMs = step.gapMs > 0 ? step.gapMs : 0;
     return pauseMs > 0 ? `Pause ${pauseMs}ms` : "Pause";
+  }
+  if (step.kind === "Function") {
+    const friendly = FRIENDLY_FUNCTIONS[step.functionPointer];
+    return friendly ? `Action: ${friendly}` : `Action: ${step.functionPointer || "(unset)"}`;
+  }
+  if (step.kind === "Mouse") {
+    switch (step.pointerType) {
+      case 0: return `Mouse up ${step.pointerValue}`;
+      case 1: return `Mouse down ${step.pointerValue}`;
+      case 2: return `Mouse left ${step.pointerValue}`;
+      case 3: return `Mouse right ${step.pointerValue}`;
+      case 4: return "Mouse left click";
+      case 5: return "Mouse right click";
+      case 6: return `Scroll up ${step.pointerValue}`;
+      case 7: return `Scroll down ${step.pointerValue}`;
+      default: return "Mouse action";
+    }
   }
   const mods = MODIFIER_BITS.filter((m) => (step.modifiers & m.bit) !== 0).map((m) => m.label);
   const keyChar = step.keycode >= 32 && step.keycode <= 126 ? String.fromCharCode(step.keycode) : `Key${step.keycode}`;
   return mods.length > 0 ? `${mods.join("+")}+${keyChar}` : keyChar;
 };
 
-const keycodeToInput = (step: HidKeyStepDto): string => {
+const keycodeToInput = (step: HidStepDto): string => {
+  if (step.kind === "Mouse") return "Mouse";
+  if (step.kind === "Function") return "Fn";
+  if (step.kind !== "Key") return "";
   if (step.keycode === 0) return "";
   if (step.keycode >= 32 && step.keycode <= 126) return String.fromCharCode(step.keycode).toLowerCase();
   return String(step.keycode);
@@ -79,17 +98,9 @@ type EditTarget =
   | { type: "encoder"; encoderId: number; direction: "ccw" | "cw" | "press" };
 
 function describeBinding(binding: HidBindingDto | undefined | null): string {
-  if (!binding) return "Unassigned";
-  if (binding.type === "Sequence") {
-    if (!binding.steps || binding.steps.length === 0) return "(empty)";
-    return binding.steps.map((s) => describeStep(s)).join(", ");
-  }
-  if (binding.type === "Function") {
-    if (!binding.functionPointer) return "Action: (unset)";
-    const friendly = FRIENDLY_FUNCTIONS[binding.functionPointer];
-    return friendly ? friendly : binding.functionPointer;
-  }
-  return "Unassigned";
+  if (!binding || binding.type !== "Sequence") return "Unassigned";
+  if (!binding.steps || binding.steps.length === 0) return "(empty)";
+  return binding.steps.map((s) => describeStep(s)).join(", ");
 }
 
 export default function CH55xBootloaderMinimal() {
@@ -102,10 +113,7 @@ export default function CH55xBootloaderMinimal() {
   const [currentBindings, setCurrentBindings] = useState<BindingProfileDto | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<DeviceLayoutDto | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
-  const [editKind, setEditKind] = useState<"Sequence" | "Function">("Sequence");
-  const [editSteps, setEditSteps] = useState<HidKeyStepDto[]>([]);
-  const [editStepKinds, setEditStepKinds] = useState<("key" | "pause")[]>([]);
-  const [editFunc, setEditFunc] = useState<string>("");
+  const [editSteps, setEditSteps] = useState<HidStepDto[]>([]);
   const [capturingStepIndex, setCapturingStepIndex] = useState<number | null>(null);
   const unsupportedDevicesUrl = "https://github.com/AmyJeanes/KeypadFlasher#supported-devices";
 
@@ -155,8 +163,11 @@ export default function CH55xBootloaderMinimal() {
       event.preventDefault();
       const ch = event.key.toLowerCase();
       const code = ch.charCodeAt(0);
-      setEditSteps((prev) => prev.map((s, i) => (i === capturingStepIndex ? { ...s, keycode: code } : s)));
-      setEditStepKinds((prev) => prev.map((k, i) => (i === capturingStepIndex ? "key" : k)));
+      setEditSteps((prev) => prev.map((s, i) => {
+        if (i !== capturingStepIndex) return s;
+        if (s.kind !== "Key") return s;
+        return { ...s, keycode: code };
+      }));
       setCapturingStepIndex(null);
       input?.blur();
     };
@@ -166,21 +177,6 @@ export default function CH55xBootloaderMinimal() {
       window.removeEventListener("keydown", onKeyDown);
       input?.blur();
     };
-  }, [capturingStepIndex]);
-
-  useEffect(() => {
-    if (capturingStepIndex == null) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.key) return;
-      if (event.key.length !== 1) return;
-      event.preventDefault();
-      const ch = event.key.toLowerCase();
-      const code = ch.charCodeAt(0);
-      setEditSteps((prev) => prev.map((s, i) => (i === capturingStepIndex ? { ...s, keycode: code } : s)));
-      setCapturingStepIndex(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
   }, [capturingStepIndex]);
 
   const handleConnect = useCallback(async () => {
@@ -360,79 +356,156 @@ export default function CH55xBootloaderMinimal() {
       return enc.press;
     })();
 
-    if (binding?.type === "Function") {
-      setEditKind("Function");
-      setEditFunc(binding.functionPointer ?? "");
-      setEditSteps([]);
-      return;
-    }
-    setEditKind("Sequence");
+    const normalizeStep = (step: any): HidStepDto => {
+      if (step && typeof step === "object" && "kind" in step) {
+        const typed = step as HidStepDto;
+        if (typed.kind === "Key") {
+          const keycode = typed.keycode === 0 ? 97 : typed.keycode;
+          const holdMs = typed.holdMs > 0 ? typed.holdMs : 10;
+          const gapMs = typed.gapMs > 0 ? typed.gapMs : 10;
+          return { ...typed, keycode, holdMs, gapMs };
+        }
+        if (typed.kind === "Pause") {
+          return { kind: "Pause", gapMs: typed.gapMs > 0 ? typed.gapMs : 100 };
+        }
+        if (typed.kind === "Mouse") {
+          const pointerType = typeof typed.pointerType === "number" ? typed.pointerType : 4;
+          const rawValue = typeof typed.pointerValue === "number" ? typed.pointerValue : 0;
+          const pointerValue = pointerType === 4 || pointerType === 5 ? 0 : rawValue;
+          const gapMs = typeof typed.gapMs === "number" && typed.gapMs >= 0 ? typed.gapMs : 0;
+          return { kind: "Mouse", pointerType, pointerValue, gapMs };
+        }
+        return { kind: "Function", functionPointer: typed.functionPointer ?? "", gapMs: typed.gapMs ?? 0 };
+      }
+
+      if (step && typeof step === "object" && "functionPointer" in step) {
+        const gapMs = typeof step.gapMs === "number" ? step.gapMs : 0;
+        return { kind: "Function", functionPointer: step.functionPointer ?? "", gapMs };
+      }
+
+      const keycode = typeof step?.keycode === "number" ? step.keycode : 0;
+      const modifiers = typeof step?.modifiers === "number" ? step.modifiers : 0;
+      const holdMs = typeof step?.holdMs === "number" ? step.holdMs : 0;
+      const gapMs = typeof step?.gapMs === "number" ? step.gapMs : 0;
+      if (keycode === 0 && modifiers === 0) {
+        return { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 };
+      }
+      return { kind: "Key", keycode: keycode === 0 ? 97 : keycode, modifiers, holdMs: holdMs > 0 ? holdMs : 10, gapMs: gapMs > 0 ? gapMs : 10 };
+    };
+
     if (binding?.type === "Sequence" && binding.steps) {
-      setEditSteps(binding.steps);
-      setEditStepKinds(binding.steps.map((s) => (s.keycode === 0 && s.modifiers === 0 ? "pause" : "key")));
+      setEditSteps(binding.steps.map(normalizeStep));
+    } else if ((binding as any)?.functionPointer) {
+      const fn = (binding as any).functionPointer as string;
+      setEditSteps([{ kind: "Function", functionPointer: fn, gapMs: 0 }]);
     } else {
       setEditSteps([]);
-      setEditStepKinds([]);
     }
-    setEditFunc("");
   };
 
   const addKeyStep = () => {
     // Start with a printable key so it shows as a key step, users can replace it.
-    setEditSteps((prev) => [...prev, { keycode: 97, modifiers: 0, holdMs: 10, gapMs: 10 }]);
-    setEditStepKinds((prev) => [...prev, "key"]);
+    setEditSteps((prev) => [...prev, { kind: "Key", keycode: 97, modifiers: 0, holdMs: 10, gapMs: 10 }]);
   };
 
   const addDelayStep = () => {
-    setEditSteps((prev) => [...prev, { keycode: 0, modifiers: 0, holdMs: 0, gapMs: 100 }]);
-    setEditStepKinds((prev) => [...prev, "pause"]);
+    setEditSteps((prev) => [...prev, { kind: "Pause", gapMs: 100 }]);
+  };
+
+  const addFunctionStep = () => {
+    const defaultFn = Object.keys(FRIENDLY_FUNCTIONS)[0] ?? "";
+    setEditSteps((prev) => [...prev, { kind: "Function", functionPointer: defaultFn, gapMs: 0 }]);
   };
 
   const removeStep = (index: number) => {
     setEditSteps((prev) => prev.filter((_, i) => i !== index));
-    setEditStepKinds((prev) => prev.filter((_, i) => i !== index));
   };
 
   const toggleStepModifier = (index: number, bit: number) => {
-    setEditSteps((prev) => prev.map((s, i) => (i === index ? { ...s, modifiers: (s.modifiers & bit) !== 0 ? (s.modifiers & ~bit) : (s.modifiers | bit) } : s)));
+    setEditSteps((prev) => prev.map((s, i) => {
+      if (i !== index || s.kind !== "Key") return s;
+      return { ...s, modifiers: (s.modifiers & bit) !== 0 ? (s.modifiers & ~bit) : (s.modifiers | bit) };
+    }));
   };
 
   const updateStepTiming = (index: number, field: "holdMs" | "gapMs", value: string) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-    setEditSteps((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: nextValue } as HidKeyStepDto : s)));
-  };
-
-  const setStepKind = (index: number, kind: "key" | "pause") => {
-    setEditStepKinds((prev) => prev.map((k, i) => (i === index ? kind : k)));
     setEditSteps((prev) => prev.map((s, i) => {
       if (i !== index) return s;
-      if (kind === "pause") {
-        return { keycode: 0, modifiers: 0, holdMs: 0, gapMs: s.gapMs > 0 ? s.gapMs : 100 };
+      if (s.kind === "Key") {
+        return { ...s, [field]: nextValue } as HidStepDto;
       }
-      const keycode = s.keycode === 0 ? 97 : s.keycode;
-      return { ...s, keycode, gapMs: s.gapMs > 0 ? s.gapMs : 10 };
+      if (field === "gapMs" && s.kind === "Pause") {
+        return { ...s, gapMs: nextValue };
+      }
+      if (field === "gapMs" && s.kind === "Function") {
+        return { ...s, gapMs: nextValue };
+      }
+      if (field === "gapMs" && s.kind === "Mouse") {
+        return { ...s, gapMs: nextValue };
+      }
+      return s;
     }));
-    if (capturingStepIndex != null && capturingStepIndex !== index) {
+  };
+
+  const setStepKind = (index: number, kind: HidStepDto["kind"]) => {
+    setEditSteps((prev) => prev.map((s, i) => {
+      if (i !== index) return s;
+      if (kind === "Key") {
+        const keycode = s.kind === "Key" && s.keycode !== 0 ? s.keycode : 97;
+        const holdMs = s.kind === "Key" && s.holdMs > 0 ? s.holdMs : 10;
+        const gapMs = s.kind === "Key" && s.gapMs > 0 ? s.gapMs : 10;
+        return { kind: "Key", keycode, modifiers: s.kind === "Key" ? s.modifiers : 0, holdMs, gapMs };
+      }
+      if (kind === "Pause") {
+        const gapMs = s.kind === "Key" || s.kind === "Function" || s.kind === "Mouse" ? (s.gapMs > 0 ? s.gapMs : 100) : s.gapMs;
+        return { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 };
+      }
+      if (kind === "Mouse") {
+        const pointerType = s.kind === "Mouse" ? s.pointerType : 4;
+        const pointerValue = pointerType === 4 || pointerType === 5
+          ? 0
+          : (s.kind === "Mouse" ? s.pointerValue : 0);
+        const gapMs = s.kind === "Mouse" && s.gapMs >= 0 ? s.gapMs : 0;
+        return { kind: "Mouse", pointerType, pointerValue, gapMs };
+      }
+      const gapMs = s.kind === "Function" && s.gapMs >= 0 ? s.gapMs : 0;
+      const functionPointer = s.kind === "Function" ? s.functionPointer : (Object.keys(FRIENDLY_FUNCTIONS)[0] ?? "");
+      return { kind: "Function", functionPointer, gapMs };
+    }));
+    if (kind !== "Key" && capturingStepIndex != null && capturingStepIndex === index) {
       setCapturingStepIndex(null);
     }
   };
 
   const applyEdit = () => {
     if (!editTarget || !currentBindings) return;
-    const steps = editSteps ?? [];
-    const mergedSteps = steps.map((step, idx) => {
-      const kind = editStepKinds[idx] ?? (step.keycode === 0 && step.modifiers === 0 ? "pause" : "key");
-      if (kind === "pause") {
-        return { keycode: 0, modifiers: 0, holdMs: 0, gapMs: step.gapMs };
+    const mergedSteps: HidStepDto[] = (editSteps ?? []).map((step) => {
+      if (step.kind === "Pause") {
+        const gapMs = step.gapMs > 0 ? step.gapMs : 100;
+        return { kind: "Pause", gapMs };
+      }
+      if (step.kind === "Function") {
+        return { kind: "Function", functionPointer: step.functionPointer, gapMs: step.gapMs >= 0 ? step.gapMs : 0 };
+      }
+      if (step.kind === "Mouse") {
+        const gapMs = step.gapMs >= 0 ? step.gapMs : 0;
+        const pointerValue = step.pointerType === 4 || step.pointerType === 5 ? 0 : step.pointerValue;
+        return { kind: "Mouse", pointerType: step.pointerType, pointerValue, gapMs };
       }
       const keycode = step.keycode === 0 ? 97 : step.keycode;
       const gapMs = step.gapMs > 0 ? step.gapMs : 10;
-      return { ...step, keycode, gapMs };
+      const holdMs = step.holdMs > 0 ? step.holdMs : 10;
+      return { kind: "Key", keycode, modifiers: step.modifiers, holdMs, gapMs };
     });
-    const binding: HidBindingDto = editKind === "Sequence"
-      ? { type: "Sequence", steps: mergedSteps }
-      : { type: "Function", functionPointer: editFunc };
+
+    if (mergedSteps.some((s) => s.kind === "Function" && !s.functionPointer)) {
+      setStatus({ state: "error", detail: "Select a function for all function steps." });
+      return;
+    }
+
+    const binding: HidBindingDto = { type: "Sequence", steps: mergedSteps };
 
     setCurrentBindings((prev) => {
       if (!prev) return prev;
@@ -668,32 +741,23 @@ export default function CH55xBootloaderMinimal() {
                 <div className="muted small">Direction: {editTarget.direction.toUpperCase()}</div>
               )}
               <div className="modal-body">
-                <div className="radio-row">
-                  <label className="radio">
-                    <input type="radio" checked={editKind === "Sequence"} onChange={() => setEditKind("Sequence")} />
-                    Key sequence (per-step)
-                  </label>
-                  <label className="radio">
-                    <input type="radio" checked={editKind === "Function"} onChange={() => setEditKind("Function")} />
-                    Function
-                  </label>
-                </div>
-                {editKind === "Sequence" && (
-                  <div className="steps-list">
-                    {editSteps.length === 0 && <div className="muted small">No steps yet. Add a key step or a pause.</div>}
-                    {editSteps.map((step, idx) => {
-                      const kind = editStepKinds[idx] ?? (step.keycode === 0 && step.modifiers === 0 ? "pause" : "key");
-                      return (
-                        <div className={`step-card${kind === "pause" ? " step-card-pause" : ""}`} key={`step-${idx}`}>
+                <div className="steps-list">
+                  {editSteps.length === 0 && <div className="muted small">No steps yet. Add a key, mouse action, function, or pause.</div>}
+                  {editSteps.map((step, idx) => {
+                    const kind = step.kind;
+                    return (
+                      <div className={`step-card${kind === "Pause" ? " step-card-pause" : ""}`} key={`step-${idx}`}>
                         <div className="step-header">
-                          <div className="step-title">Step {idx + 1} · {kind === "pause" ? "Pause" : "Key"}</div>
+                          <div className="step-title">Step {idx + 1} · {kind === "Key" ? "Key" : kind === "Pause" ? "Pause" : kind === "Mouse" ? "Mouse" : "Function"}</div>
                           <button className="btn ghost" onClick={() => removeStep(idx)}>Remove</button>
                         </div>
                         <div className="step-kind-toggle">
-                          <button className={`btn ghost${kind === "key" ? " active" : ""}`} onClick={() => setStepKind(idx, "key")}>Key step</button>
-                          <button className={`btn ghost${kind === "pause" ? " active" : ""}`} onClick={() => setStepKind(idx, "pause")}>Pause</button>
+                          <button className={`btn ghost${kind === "Key" ? " active" : ""}`} onClick={() => setStepKind(idx, "Key")}>Key step</button>
+                          <button className={`btn ghost${kind === "Pause" ? " active" : ""}`} onClick={() => setStepKind(idx, "Pause")}>Pause</button>
+                          <button className={`btn ghost${kind === "Mouse" ? " active" : ""}`} onClick={() => setStepKind(idx, "Mouse")}>Mouse</button>
+                          <button className={`btn ghost${kind === "Function" ? " active" : ""}`} onClick={() => setStepKind(idx, "Function")}>Function</button>
                         </div>
-                        {kind === "pause" ? (
+                        {kind === "Pause" && (
                           <div className="timing-row">
                             <label className="inline-input">
                               <span className="input-label">Pause (ms)</span>
@@ -707,7 +771,8 @@ export default function CH55xBootloaderMinimal() {
                             </label>
                             <div className="muted small">This pause waits before the next step.</div>
                           </div>
-                        ) : (
+                        )}
+                        {kind === "Key" && (
                           <>
                             <div className="input-row">
                               <span className="input-label">Key + modifiers</span>
@@ -754,31 +819,110 @@ export default function CH55xBootloaderMinimal() {
                             </div>
                           </>
                         )}
+                        {kind === "Mouse" && (
+                          <>
+                            <div className="input-row">
+                              <span className="input-label">Mouse action</span>
+                              <div className="grid two-col tight">
+                                <label className="inline-input">
+                                  <span className="input-label">Type</span>
+                                  <select
+                                    className="text-input"
+                                    value={step.pointerType}
+                                    onChange={(e) => {
+                                      const nextType = Number(e.target.value);
+                                      setEditSteps((prev) => prev.map((s, i) => {
+                                        if (i !== idx || s.kind !== "Mouse") return s;
+                                        const nextValue = nextType === 4 || nextType === 5 ? 0 : s.pointerValue;
+                                        return { ...s, pointerType: nextType, pointerValue: nextValue };
+                                      }));
+                                    }}
+                                  >
+                                    <option value={0}>Move up</option>
+                                    <option value={1}>Move down</option>
+                                    <option value={2}>Move left</option>
+                                    <option value={3}>Move right</option>
+                                    <option value={4}>Left click</option>
+                                    <option value={5}>Right click</option>
+                                    <option value={6}>Scroll up</option>
+                                    <option value={7}>Scroll down</option>
+                                  </select>
+                                </label>
+                                <label className="inline-input">
+                                  <span className="input-label">Value</span>
+                                  <input
+                                    className="text-input mouse-value-input"
+                                    type="number"
+                                    min={0}
+                                    value={step.pointerType === 4 || step.pointerType === 5 ? "" : step.pointerValue}
+                                    onChange={(e) => setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Mouse" ? { ...s, pointerValue: Number(e.target.value) } : s)))}
+                                    disabled={step.pointerType === 4 || step.pointerType === 5}
+                                    placeholder={step.pointerType === 4 || step.pointerType === 5 ? "Not used for clicks" : ""}
+                                    title={step.pointerType === 4 || step.pointerType === 5 ? "Value is ignored for click actions" : "Movement/scroll amount"}
+                                  />
+                                </label>
+                              </div>
+                              {step.pointerType === 4 || step.pointerType === 5 ? (
+                                <div className="muted small">Clicks ignore the value. Pick a move/scroll type to enable this field.</div>
+                              ) : (
+                                <div className="muted small">Distance in pixels for moves, ticks for scrolling.</div>
+                              )}
+                            </div>
+                            <label className="inline-input">
+                              <span className="input-label">Gap after (ms)</span>
+                              <input
+                                className="text-input"
+                                type="number"
+                                min={0}
+                                value={step.gapMs}
+                                onChange={(e) => updateStepTiming(idx, "gapMs", e.target.value)}
+                              />
+                            </label>
+                            <div className="muted small">Clicks ignore value; moves/scrolls use it as pixels or ticks.</div>
+                          </>
+                        )}
+                        {kind === "Function" && (
+                          <>
+                            <label className="input-row">
+                              <span className="input-label">Function</span>
+                              <select
+                                className="text-input"
+                                value={step.functionPointer}
+                                onChange={(e) => setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Function" ? { ...s, functionPointer: e.target.value } : s)))}
+                              >
+                                <option value="">Select…</option>
+                                {Object.entries(FRIENDLY_FUNCTIONS).map(([fn, friendly]) => (
+                                  <option key={fn} value={fn}>{friendly}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="inline-input">
+                              <span className="input-label">Gap after (ms)</span>
+                              <input
+                                className="text-input"
+                                type="number"
+                                min={0}
+                                value={step.gapMs}
+                                onChange={(e) => updateStepTiming(idx, "gapMs", e.target.value)}
+                              />
+                            </label>
+                          </>
+                        )}
                       </div>
-                      );
-                    })}
-                    <div className="step-actions">
-                      <button className="btn" onClick={addKeyStep}>Add key step</button>
-                      <button className="btn" onClick={addDelayStep}>Add pause</button>
-                    </div>
-                    <div className="muted small">Only one character per step; uppercase input is stored as lowercase unless you add Shift via modifiers.</div>
+                    );
+                  })}
+                  <div className="step-actions">
+                    <button className="btn" onClick={addKeyStep}>Add key step</button>
+                    <button className="btn" onClick={addDelayStep}>Add pause</button>
+                    <button className="btn" onClick={() => setEditSteps((prev) => [...prev, { kind: "Mouse", pointerType: 4, pointerValue: 0, gapMs: 0 }])}>Add mouse</button>
+                    <button className="btn" onClick={addFunctionStep}>Add function</button>
                   </div>
-                )}
-                {editKind === "Function" && (
-                  <label className="input-row">
-                    <span className="input-label">Function</span>
-                    <select className="text-input" value={editFunc} onChange={(e) => setEditFunc(e.target.value)}>
-                      <option value="">Select…</option>
-                      {Object.entries(FRIENDLY_FUNCTIONS).map(([fn, friendly]) => (
-                        <option key={fn} value={fn}>{friendly}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                  <div className="muted small">Only one character per step; uppercase input is stored as lowercase unless you add Shift via modifiers.</div>
+                </div>
               </div>
               <div className="modal-actions">
                 <button className="btn" onClick={closeEdit}>Cancel</button>
-                <button className="btn btn-primary" onClick={applyEdit} disabled={editKind === "Function" && !editFunc}>Save</button>
+                <button className="btn btn-primary" onClick={applyEdit} disabled={editSteps.some((s) => s.kind === "Function" && !s.functionPointer)}>Save</button>
               </div>
               <input
                 ref={hiddenKeyInputRef}

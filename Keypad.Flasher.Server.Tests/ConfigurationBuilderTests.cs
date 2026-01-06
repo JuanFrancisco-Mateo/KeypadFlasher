@@ -35,7 +35,7 @@ namespace Keypad.Flasher.Server.Tests
                 },
                 Encoders: new List<EncoderBindingEntry>
                 {
-                    new EncoderBindingEntry(0, new HidFunctionBinding("hid_consumer_volume_up"), new HidFunctionBinding("hid_consumer_volume_down"), Press: null)
+                    new EncoderBindingEntry(0, HidSequenceBinding.FromFunction("hid_consumer_volume_up"), HidSequenceBinding.FromFunction("hid_consumer_volume_down"), Press: null)
                 });
 
             var configuration = Builder.FromLayout(layout, bindings, debugMode: false);
@@ -73,8 +73,8 @@ namespace Keypad.Flasher.Server.Tests
                 {
                     new EncoderBindingEntry(
                         1,
-                        new HidFunctionBinding("hid_consumer_volume_up"),
-                        new HidFunctionBinding("hid_consumer_volume_down"),
+                        HidSequenceBinding.FromFunction("hid_consumer_volume_up"),
+                        HidSequenceBinding.FromFunction("hid_consumer_volume_down"),
                         new HidSequenceBinding("x", 0))
                 });
 

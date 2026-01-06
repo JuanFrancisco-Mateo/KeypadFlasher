@@ -29,12 +29,24 @@ typedef struct
   uint8_t value;
 } hid_pointer_event_t;
 
+typedef enum
+{
+  HID_STEP_KEY,
+  HID_STEP_PAUSE,
+  HID_STEP_FUNCTION,
+  HID_STEP_MOUSE,
+} hid_step_kind_t;
+
 typedef struct
 {
+  hid_step_kind_t kind;
   uint8_t keycode;
   uint8_t modifiers; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
   uint8_t hold_ms;   // how long to hold key+mods
-  uint8_t gap_ms;    // delay after releasing before next step
+  uint8_t gap_ms;    // delay after releasing before next step or gap after function/mouse
+  void (*functionPointer)(hid_trigger_mode_t mode);
+  hid_pointer_event_type_t pointer_type;
+  uint8_t pointer_value;
 } hid_key_step_t;
 
 #define HID_MAX_KEY_STEPS 16
@@ -48,18 +60,8 @@ typedef struct
 typedef enum
 {
   HID_BINDING_SEQUENCE,
-  HID_BINDING_MOUSE,
-  HID_BINDING_FUNCTION,
   HID_BINDING_NULL,
 } hid_binding_type_t;
-
-typedef struct
-{
-  hid_pointer_event_t mouse_event_sequence[30];
-  uint8_t length;
-  uint8_t delay;
-  uint8_t keypress;
-} hid_mouse_macro_t;
 
 typedef struct
 {
@@ -67,8 +69,6 @@ typedef struct
   union
   {
     hid_key_sequence_t sequence;
-    hid_mouse_macro_t mouse;
-    void (*functionPointer)(hid_trigger_mode_t mode);
   } function;
 } hid_binding_t;
 
