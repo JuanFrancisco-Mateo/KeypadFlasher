@@ -10,6 +10,7 @@
   --button-bg: #ffffff;
   --button-border: #e5e7eb;
   --button-text: #111827;
+  --button-primary-text: #ffffff;
   --button-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   --button-shadow-strong: 0 8px 18px rgba(0, 0, 0, 0.08);
   --button-disabled-bg: #f3f4f6;
@@ -68,6 +69,7 @@
     --button-bg: #182338;
     --button-border: #25344c;
     --button-text: #e5e7eb;
+    --button-primary-text: #0b1220;
     --button-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
     --button-shadow-strong: 0 12px 28px rgba(0, 0, 0, 0.55);
     --button-disabled-bg: #111827;
@@ -384,7 +386,7 @@ input[type="color"] {
 
 .btn-primary {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--button-primary-text);
   border-color: var(--accent);
 }
 
