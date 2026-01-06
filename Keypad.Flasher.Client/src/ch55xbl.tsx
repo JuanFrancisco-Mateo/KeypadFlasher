@@ -15,7 +15,14 @@ import "./ch55xbl.css";
 const FRIENDLY_FUNCTIONS: Record<string, string> = {
   hid_consumer_volume_up: "Volume Up",
   hid_consumer_volume_down: "Volume Down",
+  hid_consumer_mute: "Volume Mute",
+  hid_consumer_media_play_pause: "Play/Pause",
+  hid_consumer_media_next: "Next Track",
+  hid_consumer_media_previous: "Previous Track",
+  hid_consumer_media_stop: "Stop",
 };
+
+const FUNCTIONS_WITH_VALUE = new Set(["hid_consumer_volume_up", "hid_consumer_volume_down"]);
 
 const DEFAULT_FUNCTION_POINTER = Object.keys(FRIENDLY_FUNCTIONS)[0] ?? "";
 
@@ -78,6 +85,7 @@ const KEY_OPTION_GROUPS: KeyOptionGroup[] = [
 ];
 
 const KEY_OPTION_LOOKUP = new Map<number, KeyOption>();
+KEY_OPTION_LOOKUP.set(0, { value: 0, label: "None (modifiers only)" });
 KEY_OPTION_GROUPS.forEach((group) => group.options.forEach((opt) => {
   if (!KEY_OPTION_LOOKUP.has(opt.value)) {
     KEY_OPTION_LOOKUP.set(opt.value, opt);
@@ -136,7 +144,7 @@ const describeStep = (step: HidStepDto): string => {
   }
   if (step.kind === "Function") {
     const friendly = FRIENDLY_FUNCTIONS[step.functionPointer];
-    return friendly ? `Action: ${friendly}` : `Action: ${step.functionPointer || "(unset)"}`;
+    return friendly || step.functionPointer || "(unset)";
   }
   if (step.kind === "Mouse") {
     switch (step.pointerType) {
@@ -153,7 +161,9 @@ const describeStep = (step: HidStepDto): string => {
   }
   const mods = MODIFIER_BITS.filter((m) => (step.modifiers & m.bit) !== 0).map((m) => m.label);
   const keyLabel = keyLabelFromCode(step.keycode);
-  return mods.length > 0 ? `${mods.join("+")}+${keyLabel}` : keyLabel;
+  if (mods.length > 0 && keyLabel) return `${mods.join("+")}+${keyLabel}`;
+  if (mods.length > 0 && !keyLabel) return mods.join("+");
+  return keyLabel || "(unset)";
 };
 
 const defaultMouseValue = (pointerType: HidPointerType): number => {
@@ -461,10 +471,12 @@ export default function CH55xBootloaderMinimal() {
       if (step && typeof step === "object" && "kind" in step) {
         const typed = step as HidStepDto;
         if (typed.kind === "Key") {
-          const keycode = typed.keycode === 0 ? 97 : typed.keycode;
+          const modifiers = typed.modifiers || 0;
+          const rawKeycode = typeof typed.keycode === "number" ? typed.keycode : 0;
+          const keycode = rawKeycode === 0 && modifiers === 0 ? 97 : rawKeycode;
           const holdMs = typed.holdMs > 0 ? typed.holdMs : 10;
           const gapMs = typed.gapMs > 0 ? typed.gapMs : 10;
-          return { ...typed, keycode, holdMs, gapMs };
+          return { ...typed, keycode, modifiers, holdMs, gapMs };
         }
         if (typed.kind === "Pause") {
           return { kind: "Pause", gapMs: typed.gapMs > 0 ? typed.gapMs : 100 };
@@ -564,7 +576,7 @@ export default function CH55xBootloaderMinimal() {
     setEditSteps((prev) => prev.map((s, i) => {
       if (i !== index) return s;
       if (kind === "Key") {
-        const keycode = s.kind === "Key" && s.keycode !== 0 ? s.keycode : 97;
+        const keycode = s.kind === "Key" ? s.keycode : 97;
         const holdMs = s.kind === "Key" && s.holdMs > 0 ? s.holdMs : 10;
         const gapMs = s.kind === "Key" && s.gapMs > 0 ? s.gapMs : 10;
         return { kind: "Key", keycode, modifiers: s.kind === "Key" ? s.modifiers : 0, holdMs, gapMs };
@@ -583,7 +595,7 @@ export default function CH55xBootloaderMinimal() {
       }
       const gapMs = s.kind === "Function" && s.gapMs >= 0 ? s.gapMs : 0;
       const functionPointer = s.kind === "Function" ? (s.functionPointer || DEFAULT_FUNCTION_POINTER) : DEFAULT_FUNCTION_POINTER;
-      const functionValue = s.kind === "Function" && s.functionValue ? s.functionValue : 1;
+      const functionValue = FUNCTIONS_WITH_VALUE.has(functionPointer) && s.kind === "Function" && s.functionValue ? s.functionValue : 1;
       return { kind: "Function", functionPointer, functionValue, gapMs };
     }));
     if (kind !== "Key" && capturingStepIndex != null && capturingStepIndex === index) {
@@ -599,7 +611,7 @@ export default function CH55xBootloaderMinimal() {
         return { kind: "Pause", gapMs };
       }
       if (step.kind === "Function") {
-        const functionValue = step.functionValue && step.functionValue > 0 ? step.functionValue : 1;
+        const functionValue = FUNCTIONS_WITH_VALUE.has(step.functionPointer) && step.functionValue && step.functionValue > 0 ? step.functionValue : 1;
         return { kind: "Function", functionPointer: step.functionPointer, functionValue, gapMs: step.gapMs >= 0 ? step.gapMs : 0 };
       }
       if (step.kind === "Mouse") {
@@ -609,7 +621,7 @@ export default function CH55xBootloaderMinimal() {
           : defaultMouseValue(step.pointerType as HidPointerType);
         return { kind: "Mouse", pointerType: step.pointerType as HidPointerType, pointerValue, gapMs };
       }
-      const keycode = step.keycode === 0 ? 97 : step.keycode;
+      const keycode = step.keycode;
       const gapMs = step.gapMs > 0 ? step.gapMs : 10;
       const holdMs = step.holdMs > 0 ? step.holdMs : 10;
       return { kind: "Key", keycode, modifiers: step.modifiers, holdMs, gapMs };
@@ -898,13 +910,14 @@ export default function CH55xBootloaderMinimal() {
                                   <span className="input-label">Pick from list</span>
                                   <select
                                     className="text-input"
-                                    value={KEY_OPTION_LOOKUP.has(step.keycode) ? String(step.keycode) : ""}
+                                    value={String(step.keycode ?? "")}
                                     onChange={(e) => {
                                       const parsed = Number(e.target.value);
                                       if (!Number.isFinite(parsed)) return;
                                       setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Key" ? { ...s, keycode: parsed } : s)));
                                     }}
                                   >
+                                    <option value="0">None (modifiers only)</option>
                                     <option value="">Select a key…</option>
                                     {KEY_OPTION_GROUPS.map((group) => (
                                       <optgroup key={group.label} label={group.label}>
@@ -1003,15 +1016,15 @@ export default function CH55xBootloaderMinimal() {
                                     value={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "" : step.pointerValue}
                                     onChange={(e) => setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Mouse" ? { ...s, pointerValue: Number(e.target.value) } : s)))}
                                     disabled={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick}
-                                    placeholder={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "Not used for clicks" : ""}
+                                    placeholder={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "N/A" : ""}
                                     title={step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? "Value is ignored for click actions" : "Movement/scroll amount"}
                                   />
                                 </label>
                               </div>
                               {step.pointerType === HID_POINTER_TYPE.LeftClick || step.pointerType === HID_POINTER_TYPE.RightClick ? (
-                                <div className="muted small mouse-help-spacer">Clicks ignore the value. Pick a move/scroll type to enable this field.</div>
+                                <div className="muted small mouse-help-spacer">Value: N/A for click actions.</div>
                               ) : (
-                                <div className="muted small mouse-help-spacer">Distance in pixels for moves, ticks for scrolling.</div>
+                                <div className="muted small mouse-help-spacer">Value: pixels for moves; ticks for scroll.</div>
                               )}
                             </div>
                             <label className="inline-input">
@@ -1037,7 +1050,12 @@ export default function CH55xBootloaderMinimal() {
                                   <select
                                     className="text-input"
                                     value={step.functionPointer || DEFAULT_FUNCTION_POINTER}
-                                    onChange={(e) => setEditSteps((prev) => prev.map((s, i) => (i === idx && s.kind === "Function" ? { ...s, functionPointer: e.target.value || DEFAULT_FUNCTION_POINTER } : s)))}
+                                    onChange={(e) => setEditSteps((prev) => prev.map((s, i) => {
+                                      if (i !== idx || s.kind !== "Function") return s;
+                                      const nextPointer = e.target.value || DEFAULT_FUNCTION_POINTER;
+                                      const nextValue = FUNCTIONS_WITH_VALUE.has(nextPointer) ? (s.functionValue ?? 1) : 1;
+                                      return { ...s, functionPointer: nextPointer, functionValue: nextValue };
+                                    }))}
                                   >
                                     {Object.entries(FRIENDLY_FUNCTIONS).map(([fn, friendly]) => (
                                       <option key={fn} value={fn}>{friendly}</option>
@@ -1047,14 +1065,21 @@ export default function CH55xBootloaderMinimal() {
                                 <label className="inline-input">
                                   <span className="input-label">Value</span>
                                   <input
-                                    className="text-input"
+                                    className="text-input value-na-input"
                                     type="number"
                                     min={1}
-                                    value={step.functionValue ?? 1}
+                                    value={FUNCTIONS_WITH_VALUE.has(step.functionPointer || DEFAULT_FUNCTION_POINTER) ? step.functionValue ?? 1 : ""}
                                     onChange={(e) => updateFunctionValue(idx, e.target.value)}
+                                    disabled={!FUNCTIONS_WITH_VALUE.has(step.functionPointer || DEFAULT_FUNCTION_POINTER)}
+                                    placeholder={!FUNCTIONS_WITH_VALUE.has(step.functionPointer || DEFAULT_FUNCTION_POINTER) ? "N/A" : undefined}
                                   />
                                 </label>
                               </div>
+                              {!FUNCTIONS_WITH_VALUE.has(step.functionPointer || DEFAULT_FUNCTION_POINTER) ? (
+                                <div className="muted small mouse-help-spacer">Value: N/A for this function.</div>
+                              ) : (
+                                <div className="muted small mouse-help-spacer">Value: repeat count for volume steps.</div>
+                              )}
                             </div>
                             <label className="inline-input gap-spacer">
                               <span className="input-label">Gap after (ms)</span>

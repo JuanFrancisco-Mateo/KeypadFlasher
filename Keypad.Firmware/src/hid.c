@@ -9,6 +9,11 @@
 
 #define HID_CONSUMER_VOLUME_INCREMENT 0x00E9
 #define HID_CONSUMER_VOLUME_DECREMENT 0x00EA
+#define HID_CONSUMER_MUTE 0x00E2
+#define HID_CONSUMER_PLAY_PAUSE 0x00CD
+#define HID_CONSUMER_SCAN_NEXT 0x00B5
+#define HID_CONSUMER_SCAN_PREV 0x00B6
+#define HID_CONSUMER_STOP 0x00B7
 
 static int consumer_volume_pending_s = 0;
 static uint8_t consumer_phase_s = 0; // 0 idle, 1 waiting to release
@@ -95,7 +100,10 @@ static void hid_run_key_sequence(hid_key_sequence_t sequence, hid_trigger_mode_t
       if (mods & 0x04) Keyboard_press(KEY_LEFT_ALT);
       if (mods & 0x08) Keyboard_press(KEY_LEFT_GUI);
 
-      Keyboard_press(key);
+      if (key != 0)
+      {
+        Keyboard_press(key);
+      }
       if (hold_ms == 0)
       {
         hold_ms = 10; // default hold for reliability
@@ -142,6 +150,51 @@ void hid_consumer_volume_down(hid_trigger_mode_t mode)
     return;
   }
   consumer_volume_pending_s--;
+}
+
+void hid_consumer_mute(hid_trigger_mode_t mode)
+{
+  if (mode != HID_TRIGGER_PRESS && mode != HID_TRIGGER_CLICK)
+  {
+    return;
+  }
+  Keyboard_consumer_send(HID_CONSUMER_MUTE);
+}
+
+void hid_consumer_media_play_pause(hid_trigger_mode_t mode)
+{
+  if (mode != HID_TRIGGER_PRESS && mode != HID_TRIGGER_CLICK)
+  {
+    return;
+  }
+  Keyboard_consumer_send(HID_CONSUMER_PLAY_PAUSE);
+}
+
+void hid_consumer_media_next(hid_trigger_mode_t mode)
+{
+  if (mode != HID_TRIGGER_PRESS && mode != HID_TRIGGER_CLICK)
+  {
+    return;
+  }
+  Keyboard_consumer_send(HID_CONSUMER_SCAN_NEXT);
+}
+
+void hid_consumer_media_previous(hid_trigger_mode_t mode)
+{
+  if (mode != HID_TRIGGER_PRESS && mode != HID_TRIGGER_CLICK)
+  {
+    return;
+  }
+  Keyboard_consumer_send(HID_CONSUMER_SCAN_PREV);
+}
+
+void hid_consumer_media_stop(hid_trigger_mode_t mode)
+{
+  if (mode != HID_TRIGGER_PRESS && mode != HID_TRIGGER_CLICK)
+  {
+    return;
+  }
+  Keyboard_consumer_send(HID_CONSUMER_STOP);
 }
 
 void hid_handle_button(size_t button_index, hid_trigger_mode_t mode)

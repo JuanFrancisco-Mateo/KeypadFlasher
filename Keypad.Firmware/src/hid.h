@@ -79,5 +79,10 @@ void hid_handle_encoder(size_t encoder_index, bool clockwise);
 
 void hid_consumer_volume_up(hid_trigger_mode_t mode);
 void hid_consumer_volume_down(hid_trigger_mode_t mode);
+void hid_consumer_mute(hid_trigger_mode_t mode);
+void hid_consumer_media_play_pause(hid_trigger_mode_t mode);
+void hid_consumer_media_next(hid_trigger_mode_t mode);
+void hid_consumer_media_previous(hid_trigger_mode_t mode);
+void hid_consumer_media_stop(hid_trigger_mode_t mode);
 
 void hid_service(void);
