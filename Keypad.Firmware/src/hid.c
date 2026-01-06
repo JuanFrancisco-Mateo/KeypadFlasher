@@ -15,22 +15,38 @@ static uint8_t consumer_phase_s = 0; // 0 idle, 1 waiting to release
 
 static void hid_run_key_sequence(hid_key_sequence_t sequence, hid_trigger_mode_t mode)
 {
+  uint8_t i;
+
   if (mode == HID_TRIGGER_RELEASE)
   {
     return;
   }
 
-  for (uint8_t i = 0; i < sequence.length; i++)
+  for (i = 0; i < sequence.length; i++)
   {
-    Keyboard_press(sequence.sequence[i]);
-    delay(10);
-    if (sequence.delay > 0)
+    uint8_t mods = sequence.steps[i].modifiers;
+    uint8_t hold_ms = sequence.steps[i].hold_ms;
+    uint8_t gap_ms = sequence.steps[i].gap_ms;
+    uint8_t key = sequence.steps[i].keycode;
+
+    if (mods & 0x01) Keyboard_press(KEY_LEFT_CTRL);
+    if (mods & 0x02) Keyboard_press(KEY_LEFT_SHIFT);
+    if (mods & 0x04) Keyboard_press(KEY_LEFT_ALT);
+    if (mods & 0x08) Keyboard_press(KEY_LEFT_GUI);
+
+    Keyboard_press(key);
+    if (hold_ms == 0)
     {
-      Keyboard_release(sequence.sequence[i]);
-      delay(sequence.delay);
+      hold_ms = 10; // default hold for reliability
+    }
+    delay(hold_ms);
+    Keyboard_releaseAll();
+
+    if (gap_ms > 0)
+    {
+      delay(gap_ms);
     }
   }
-  Keyboard_releaseAll();
 }
 
 static void hid_run_mouse_sequence(hid_mouse_macro_t sequence, hid_trigger_mode_t mode)

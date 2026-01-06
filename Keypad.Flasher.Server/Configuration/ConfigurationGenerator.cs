@@ -173,9 +173,20 @@ namespace Keypad.Flasher.Server.Configuration
                 case HidSequenceBinding sequenceBinding:
                     AppendLine(sb, indentLevel, ".type = HID_BINDING_SEQUENCE,");
                     AppendLine(sb, indentLevel, ".function.sequence = {");
-                    AppendLine(sb, indentLevel + 1, $".sequence = {{{string.Join(", ", sequenceBinding.Sequence.Select(ToCharLiteral))}}},");
-                    AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Sequence.Length},");
-                    AppendLine(sb, indentLevel + 1, $".delay = {sequenceBinding.Delay}");
+                    AppendLine(sb, indentLevel + 1, ".steps = {");
+                    for (int i = 0; i < sequenceBinding.Steps.Count; i++)
+                    {
+                        var step = sequenceBinding.Steps[i];
+                        var isLast = i == sequenceBinding.Steps.Count - 1;
+                        AppendLine(sb, indentLevel + 2, "{");
+                        AppendLine(sb, indentLevel + 3, $".keycode = {step.Keycode},");
+                        AppendLine(sb, indentLevel + 3, $".modifiers = {step.Modifiers},");
+                        AppendLine(sb, indentLevel + 3, $".hold_ms = {step.HoldMs},");
+                        AppendLine(sb, indentLevel + 3, $".gap_ms = {step.GapMs}");
+                        AppendLine(sb, indentLevel + 2, isLast ? "}" : "},");
+                    }
+                    AppendLine(sb, indentLevel + 1, "},");
+                    AppendLine(sb, indentLevel + 1, $".length = {sequenceBinding.Steps.Count}");
                     AppendLine(sb, indentLevel, "}");
                     break;
                 case HidFunctionBinding functionBinding:

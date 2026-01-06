@@ -8,12 +8,14 @@ namespace Keypad.Flasher.Server.Configuration
         Function
     }
 
+    public sealed record HidKeyStep(byte Keycode, byte Modifiers, byte HoldMs, byte GapMs);
+
     [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
     [JsonDerivedType(typeof(HidSequenceBinding), "Sequence")]
     [JsonDerivedType(typeof(HidFunctionBinding), "Function")]
     public abstract record HidBinding([property: JsonIgnore] HidBindingType Type);
 
-    public sealed record HidSequenceBinding(string Sequence, byte Delay)
+    public sealed record HidSequenceBinding(IReadOnlyList<HidKeyStep> Steps)
         : HidBinding(HidBindingType.Sequence);
 
     public sealed record HidFunctionBinding(string FunctionPointer)

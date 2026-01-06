@@ -1,6 +1,13 @@
+export type HidKeyStepDto = {
+  keycode: number;
+  modifiers: number; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
+  holdMs: number;
+  gapMs: number;
+};
+
 export type HidBindingDto =
-  | { type: "Sequence"; sequence: string; delay: number; functionPointer?: undefined }
-  | { type: "Function"; sequence?: undefined; delay?: undefined; functionPointer: string };
+  | { type: "Sequence"; steps: HidKeyStepDto[]; functionPointer?: undefined }
+  | { type: "Function"; steps?: undefined; functionPointer: string };
 
 export type InputLayoutDto = {
   pin: number;
@@ -26,6 +33,7 @@ export type DeviceLayoutDto = {
   encoders: EncoderLayoutDto[];
   neoPixelPin: number;
   neoPixelReversed: boolean;
+  displayRows?: number[];
 };
 
 export type BindingProfileDto = {
@@ -35,7 +43,8 @@ export type BindingProfileDto = {
 
 export type KnownDeviceProfile = { name: string; layout: DeviceLayoutDto; defaultBindings: BindingProfileDto };
 
-const seq = (sequence: string, delay = 0): HidBindingDto => ({ type: "Sequence", sequence, delay });
+const key = (ch: string, modifiers = 0): HidKeyStepDto => ({ keycode: ch.charCodeAt(0), modifiers, holdMs: 10, gapMs: 10 });
+const seq = (sequence: string, modifiers = 0): HidBindingDto => ({ type: "Sequence", steps: sequence.split("").map((c) => key(c, modifiers)) });
 const func = (fn: string): HidBindingDto => ({ type: "Function", functionPointer: fn });
 
 export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
@@ -71,6 +80,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
       ],
       neoPixelPin: 34,
       neoPixelReversed: false,
+      displayRows: [3],
     },
     defaultBindings: {
       buttons: [
@@ -95,6 +105,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
       encoders: [],
       neoPixelPin: 34,
       neoPixelReversed: true,
+      displayRows: [4],
     },
     defaultBindings: {
       buttons: [
@@ -110,29 +121,28 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
     name: "6 Keys 1 Knob",
     layout: {
       buttons: [
-        { id: 0, pin: 33, activeLow: true, ledIndex: -1, bootloaderOnBoot: true, bootloaderChordMember: false },
-        { id: 1, pin: 32, activeLow: true, ledIndex: 0, bootloaderOnBoot: false, bootloaderChordMember: true },
-        { id: 2, pin: 14, activeLow: true, ledIndex: 1, bootloaderOnBoot: false, bootloaderChordMember: true },
-        { id: 3, pin: 15, activeLow: true, ledIndex: 2, bootloaderOnBoot: false, bootloaderChordMember: true },
-        { id: 4, pin: 16, activeLow: true, ledIndex: 3, bootloaderOnBoot: false, bootloaderChordMember: true },
-        { id: 5, pin: 17, activeLow: true, ledIndex: 4, bootloaderOnBoot: false, bootloaderChordMember: true },
-        { id: 6, pin: 11, activeLow: true, ledIndex: 5, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 0, pin: 32, activeLow: true, ledIndex: 0, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 1, pin: 14, activeLow: true, ledIndex: 1, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 2, pin: 15, activeLow: true, ledIndex: 2, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 3, pin: 16, activeLow: true, ledIndex: 3, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 4, pin: 17, activeLow: true, ledIndex: 4, bootloaderOnBoot: false, bootloaderChordMember: true },
+        { id: 5, pin: 11, activeLow: true, ledIndex: 5, bootloaderOnBoot: false, bootloaderChordMember: true },
       ],
       encoders: [
         { id: 0, pinA: 31, pinB: 30, press: { pin: 33, activeLow: true, bootloaderOnBoot: true, bootloaderChordMember: false } },
       ],
       neoPixelPin: 34,
       neoPixelReversed: true,
+      displayRows: [3, 3],
     },
     defaultBindings: {
       buttons: [
-        { id: 0, binding: seq("", 0) },
-        { id: 1, binding: seq("1", 0) },
-        { id: 2, binding: seq("2", 0) },
-        { id: 3, binding: seq("3", 0) },
-        { id: 4, binding: seq("4", 0) },
-        { id: 5, binding: seq("5", 0) },
-        { id: 6, binding: seq("6", 0) },
+        { id: 0, binding: seq("1", 0) },
+        { id: 1, binding: seq("2", 0) },
+        { id: 2, binding: seq("3", 0) },
+        { id: 3, binding: seq("4", 0) },
+        { id: 4, binding: seq("5", 0) },
+        { id: 5, binding: seq("6", 0) },
       ],
       encoders: [
         { id: 0, clockwise: func("hid_consumer_volume_up"), counterClockwise: func("hid_consumer_volume_down"), press: seq("Enter", 0) },
@@ -157,6 +167,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
       encoders: [],
       neoPixelPin: -1,
       neoPixelReversed: false,
+      displayRows: [10],
     },
     defaultBindings: {
       buttons: [

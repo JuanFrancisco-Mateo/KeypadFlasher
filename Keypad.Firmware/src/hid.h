@@ -31,9 +31,18 @@ typedef struct
 
 typedef struct
 {
-  uint8_t sequence[100];
+  uint8_t keycode;
+  uint8_t modifiers; // bitmask: 1=Ctrl, 2=Shift, 4=Alt, 8=GUI
+  uint8_t hold_ms;   // how long to hold key+mods
+  uint8_t gap_ms;    // delay after releasing before next step
+} hid_key_step_t;
+
+#define HID_MAX_KEY_STEPS 16
+
+typedef struct
+{
+  hid_key_step_t steps[HID_MAX_KEY_STEPS];
   uint8_t length;
-  uint8_t delay;
 } hid_key_sequence_t;
 
 typedef enum
