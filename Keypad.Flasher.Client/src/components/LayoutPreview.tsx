@@ -157,7 +157,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
           <span className="legend-text">Hold at power-up to enter bootloader.</span>
         </span>
         <span className="legend-item">
-          <span className="material-symbols-outlined legend-icon">piano</span>
+          <span className="material-symbols-outlined legend-icon">link</span>
           <span className="legend-text">Part of the bootloader chord you can press anytime.</span>
           <span className="legend-text">Edit Bindings to configure.</span>
         </span>
@@ -188,7 +188,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                         const pressBootloaderOnBoot = Boolean(enc.press?.bootloaderOnBoot);
                         const pressBootloaderChordMember = Boolean(enc.press?.bootloaderChordMember);
                         const pressBootIcon = pressBootloaderOnBoot ? "power" : "power_off";
-                        const pressChordIcon = pressBootloaderChordMember ? "piano" : "piano_off";
+                        const pressChordIcon = pressBootloaderChordMember ? "link" : "link_off";
                         return (
                           <div className="encoder-tile" key={enc.id}>
                             <div className="encoder-label">Encoder {enc.id + 1}</div>
@@ -285,7 +285,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                             const bootloaderOnBoot = Boolean(button?.bootloaderOnBoot);
                             const bootloaderChordMember = Boolean(button?.bootloaderChordMember);
                             const bootIcon = bootloaderOnBoot ? "power" : "power_off";
-                            const chordIcon = bootloaderChordMember ? "piano" : "piano_off";
+                            const chordIcon = bootloaderChordMember ? "link" : "link_off";
                             const binding = button ? describeBinding(buttonBindings.get(button.id)) : "Unassigned";
                             buttonCursor += 1;
                             const ledIndex = button ? button.ledIndex : -1;
