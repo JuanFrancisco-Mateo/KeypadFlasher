@@ -1,5 +1,5 @@
 /// <reference types="w3c-web-usb" />
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from "react";
 import {
   CH55xBootloader,
   FakeBootloader,
@@ -1226,7 +1226,7 @@ export default function KeypadFlasherApp() {
   const warnNoBootEntry = Boolean(selectedLayout && bootloaderOnBootCount === 0 && bootloaderChordCount === 0);
   const warnSingleChord = Boolean(selectedLayout && bootloaderChordCount === 1);
 
-  const statusBanner = (() => {
+  const statusBanner: { tone: "info" | "success" | "warn" | "error"; title: string; body?: ReactNode; showSpinner?: boolean } | null = (() => {
     switch (status.state) {
       case "requesting":
         return { tone: "info" as const, title: "Requesting device…", body: "Approve the WebUSB prompt to continue." };
@@ -1235,7 +1235,7 @@ export default function KeypadFlasherApp() {
       case "connectedUnknown":
         return { tone: "warn" as const, title: "Device not recognized", body: "Use debug firmware or pick a supported layout." };
       case "compiling":
-        return { tone: "info" as const, title: "Compiling firmware…", body: status.detail ? `Building ${status.detail}.` : undefined };
+        return { tone: "info" as const, title: "Compiling firmware…", body: status.detail ? `Building ${status.detail}.` : undefined, showSpinner: true };
       case "unsupported":
         return { tone: "warn" as const, title: "Unknown device", body: status.detail };
       case "flashing":
@@ -1259,9 +1259,11 @@ export default function KeypadFlasherApp() {
       case "error":
         return { tone: "error" as const, title: "Error", body: status.detail };
       default:
-        return null;
+          return null;
     }
   })();
+
+        const statusProgress = progress.total > 0 ? progress : null;
 
   return (
     <div className="app-shell">
@@ -1353,14 +1355,13 @@ export default function KeypadFlasherApp() {
           )}
 
           {statusBanner && (
-            <StatusBanner tone={statusBanner.tone} title={statusBanner.title} body={statusBanner.body} />
-          )}
-
-          {progress.total > 0 && (
-            <div className="progress">
-              <div className="progress-bar" style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }} />
-              <div className="muted small mt-1">{progress.phase} {progress.current} / {progress.total}</div>
-            </div>
+            <StatusBanner
+              tone={statusBanner.tone}
+              title={statusBanner.title}
+              body={statusBanner.body}
+              showSpinner={statusBanner.showSpinner}
+              progress={statusProgress}
+            />
           )}
         </div>
 

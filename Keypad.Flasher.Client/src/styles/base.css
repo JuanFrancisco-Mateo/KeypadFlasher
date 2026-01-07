@@ -516,6 +516,16 @@ input[type="color"] {
   background: var(--info-bg);
   color: var(--info-text);
   box-shadow: var(--shadow);
+  --status-progress-track: rgba(0, 0, 0, 0.08);
+  --status-progress-start: var(--progress-start);
+  --status-progress-end: var(--progress-end);
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .status-title {
@@ -539,22 +549,77 @@ input[type="color"] {
   word-break: break-word;
 }
 
+.status-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  animation: status-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes status-spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.status-progress {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--status-progress-track);
+  overflow: hidden;
+}
+
+.status-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--status-progress-start), var(--status-progress-end));
+}
+
+.status-progress-meta {
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-banner {
+    --status-progress-track: rgba(255, 255, 255, 0.14);
+  }
+}
+
 .status-success {
   border-color: var(--success-border);
   background: var(--success-bg);
   color: var(--success-text);
+  --status-progress-start: #0ea15a;
+  --status-progress-end: #34d399;
 }
 
 .status-warn {
   border-color: var(--warn-border);
   background: var(--warn-bg);
   color: var(--warn-text);
+  --status-progress-start: #d97706;
+  --status-progress-end: #fbbf24;
 }
 
 .status-error {
   border-color: var(--error-border);
   background: var(--error-bg);
   color: var(--error-text);
+  --status-progress-start: #dc2626;
+  --status-progress-end: #f87171;
 }
 
 .clickable {
