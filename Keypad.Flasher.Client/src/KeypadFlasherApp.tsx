@@ -1261,7 +1261,7 @@ export default function KeypadFlasherApp() {
       <div className="container">
         <header>
           <h1 className="title">Keypad Flasher</h1>
-          <p className="muted">Flash supported CH552X-based keypads directly from your browser using WebUSB.</p>
+          <p className="muted">Flash supported CH55X-based keypads directly from your browser using WebUSB.</p>
           <p className="muted small">
             <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher" target="_blank" rel="noreferrer">GitHub</a>
             <span aria-hidden="true"> | </span>
