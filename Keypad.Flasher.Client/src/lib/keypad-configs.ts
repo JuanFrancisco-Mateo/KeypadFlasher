@@ -72,8 +72,8 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
     name: "2 Keys",
     layout: {
       buttons: [
-        { id: 0, pin: 32, activeLow: true, ledIndex: -1, bootloaderOnBoot: true, bootloaderChordMember: false },
-        { id: 1, pin: 14, activeLow: true, ledIndex: -1, bootloaderOnBoot: false, bootloaderChordMember: false },
+        { id: 0, pin: 14, activeLow: true, ledIndex: -1, bootloaderOnBoot: true, bootloaderChordMember: false },
+        { id: 1, pin: 32, activeLow: true, ledIndex: -1, bootloaderOnBoot: false, bootloaderChordMember: false },
       ],
       encoders: [],
       neoPixelPin: -1,
