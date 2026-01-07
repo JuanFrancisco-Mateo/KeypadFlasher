@@ -15,6 +15,8 @@ type LayoutPreviewProps = {
   warnSingleChord: boolean;
   onEdit: (target: EditTarget) => void;
   onOpenLightingForLed: (ledIndex: number) => void;
+  onOpenLightingSettings?: () => void;
+  lightingDisabled?: boolean;
   onToggleBootloaderOnBoot: (target: EditTarget, value: boolean) => void;
   onToggleBootloaderChord: (target: EditTarget, value: boolean) => void;
   onResetDefaults?: () => void;
@@ -23,7 +25,7 @@ type LayoutPreviewProps = {
   canReset?: boolean;
 };
 
-export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onToggleBootloaderOnBoot, onToggleBootloaderChord, onResetDefaults, onExportConfig, onImportConfig, canReset }: LayoutPreviewProps) {
+export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onOpenLightingSettings, lightingDisabled, onToggleBootloaderOnBoot, onToggleBootloaderChord, onResetDefaults, onExportConfig, onImportConfig, canReset }: LayoutPreviewProps) {
   const sortedButtons = [...layout.buttons].sort((a, b) => a.id - b.id);
   const encoderCount = layout.encoders.length;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -148,6 +150,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
           <div className="muted small">Click any button or encoder tile to change its bindings or lighting if available.</div>
         </div>
         <div className="layout-actions">
+          {onOpenLightingSettings && (
+            <button className="btn btn-primary" onClick={onOpenLightingSettings} disabled={lightingDisabled} title={lightingDisabled ? "No LEDs available" : undefined}>Global Lighting</button>
+          )}
           {onExportConfig && <button className="btn" onClick={onExportConfig}>Export</button>}
           {onImportConfig && <button className="btn" onClick={onImportConfig}>Import</button>}
           {canReset && onResetDefaults && (

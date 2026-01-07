@@ -214,25 +214,9 @@ export default function KeypadFlasherApp() {
               muted={false}
             />
             <div className="muted small" style={{ maxWidth: "340px" }}>
-              Hold to see active lighting, release to return to passive. Does not show global brightness. Updates live as you change settings below.
+              Hold to see active lighting, release to return to passive. Does not show global brightness. Updates live when settings change.
             </div>
           </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
-          <div style={{ fontWeight: 600 }}>Device lighting</div>
-          <div className="muted small">These settings apply to every LED on the device.</div>
-          <label className="muted small" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-            <span>Global brightness</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={draftLedConfig.brightnessPercent}
-              onChange={(e) => setBrightnessPercent(Number(e.target.value))}
-            />
-            <span style={{ minWidth: "36px", textAlign: "right" }}>{draftLedConfig.brightnessPercent}%</span>
-          </label>
-          <div className="muted small">Brightness scales both passive and active effects together; use the controls below for per-key tweaks.</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -362,6 +346,7 @@ export default function KeypadFlasherApp() {
   const [editorTarget, setEditorTarget] = useState<EditTarget | null>(null);
   const [editorBinding, setEditorBinding] = useState<HidBindingDto | null>(null);
   const [stepClipboard, setStepClipboard] = useState<HidStepDto[] | null>(null);
+  const [showGlobalLightingModal, setShowGlobalLightingModal] = useState<boolean>(false);
   const [showLightingModal, setShowLightingModal] = useState<boolean>(false);
   const [focusLedIndex, setFocusLedIndex] = useState<number | null>(null);
   const [copiedLedLighting, setCopiedLedLighting] = useState<{ passiveMode: PassiveLedMode; passive: LedColor; activeMode: ActiveLedMode; activeColor: LedColor } | null>(null);
@@ -913,6 +898,17 @@ export default function KeypadFlasherApp() {
     return { r, g, b };
   };
 
+  const cloneLedConfig = (config: LedConfigurationDto): LedConfigurationDto => ({
+    passiveModes: [...config.passiveModes],
+    passiveColors: [...config.passiveColors],
+    activeModes: [...config.activeModes],
+    activeColors: [...config.activeColors],
+    brightnessPercent: config.brightnessPercent,
+    rainbowStepMs: config.rainbowStepMs,
+    breathingMinPercent: config.breathingMinPercent,
+    breathingStepMs: config.breathingStepMs,
+  });
+
   const ledDisplayName = (idx: number): string => {
     const btn = userButtons.find((b) => b.ledIndex === idx);
     if (btn) return `Button ${btn.id + 1}`;
@@ -1021,6 +1017,26 @@ export default function KeypadFlasherApp() {
     }
   }, [parseImportedConfig, connectedInfo, rememberedBootloaderId, selectedLayout]);
 
+  const closeGlobalLightingModal = () => {
+    setShowGlobalLightingModal(false);
+    setDraftLedConfig(null);
+  };
+
+  const saveGlobalLightingModal = () => {
+    if (draftLedConfig) {
+      setLedConfig(draftLedConfig);
+    }
+    closeGlobalLightingModal();
+  };
+
+  const openGlobalLightingModal = () => {
+    if (!ledConfig) return;
+    setDraftLedConfig(cloneLedConfig(ledConfig));
+    setLightingStatus(defaultLightingStatus);
+    setFocusLedIndex(null);
+    setShowGlobalLightingModal(true);
+  };
+
   const closeLightingModal = () => {
     setShowLightingModal(false);
     setDraftLedConfig(null);
@@ -1035,16 +1051,7 @@ export default function KeypadFlasherApp() {
   };
   const openLightingForLed = (idx: number) => {
     if (!ledConfig || idx < 0 || idx >= ledConfig.passiveColors.length) return;
-    setDraftLedConfig({
-      passiveModes: [...ledConfig.passiveModes],
-      passiveColors: [...ledConfig.passiveColors],
-      activeModes: [...ledConfig.activeModes],
-      activeColors: [...ledConfig.activeColors],
-      brightnessPercent: ledConfig.brightnessPercent,
-      rainbowStepMs: ledConfig.rainbowStepMs,
-      breathingMinPercent: ledConfig.breathingMinPercent,
-      breathingStepMs: ledConfig.breathingStepMs,
-    });
+    setDraftLedConfig(cloneLedConfig(ledConfig));
     setLightingStatus(defaultLightingStatus);
     setFocusLedIndex(idx);
     setShowLightingModal(true);
@@ -1387,6 +1394,8 @@ export default function KeypadFlasherApp() {
             warnSingleChord={warnSingleChord}
             onEdit={openEdit}
             onOpenLightingForLed={openLightingForLed}
+            onOpenLightingSettings={openGlobalLightingModal}
+            lightingDisabled={!ledConfig || layoutLedCount === 0}
             onToggleBootloaderOnBoot={updateBootloaderOnBoot}
             onToggleBootloaderChord={updateBootloaderChordMember}
             onExportConfig={openExportModal}
@@ -1453,6 +1462,54 @@ export default function KeypadFlasherApp() {
               <div className="modal-actions">
                 <button className="btn" onClick={() => setShowDemoModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={startDemo} disabled={!selectedDemoKey || demoOptions.length === 0}>Start demo</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showGlobalLightingModal && (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (modalPointerDownRef.current) { modalPointerDownRef.current = false; return; }
+              if (e.target === e.currentTarget) closeGlobalLightingModal();
+            }}
+          >
+            <div
+              className="modal lighting-modal"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={() => { modalPointerDownRef.current = true; }}
+              onMouseUp={() => { modalPointerDownRef.current = false; }}
+            >
+              <div className="modal-header">
+                <div className="modal-title">Global lighting</div>
+              </div>
+              <div className="modal-body">
+                {draftLedConfig ? (
+                  <div className="space-y-2">
+                    <div className="muted small">These settings apply to every button LED on the device.</div>
+                    <label className="muted small" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                      <span>Global brightness</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={draftLedConfig.brightnessPercent}
+                        onChange={(e) => setBrightnessPercent(Number(e.target.value))}
+                      />
+                      <span style={{ minWidth: "36px", textAlign: "right" }}>{draftLedConfig.brightnessPercent}%</span>
+                    </label>
+                    <div className="muted small">Brightness scales both passive and active effects together.</div>
+                  </div>
+                ) : (
+                  <div className="muted small">No lighting configuration available.</div>
+                )}
+              </div>
+              <div className="modal-actions">
+                <button className="btn" onClick={closeGlobalLightingModal}>Cancel</button>
+                <button className="btn btn-primary" onClick={saveGlobalLightingModal} disabled={!draftLedConfig}>Save</button>
               </div>
             </div>
           </div>
