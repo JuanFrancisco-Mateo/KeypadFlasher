@@ -68,17 +68,6 @@ const sameBootloaderId = (a: number[] | null, b: number[] | null): boolean => {
   return a.every((v, idx) => v === b[idx]);
 };
 
-const MIN_STEP_MS = 5;
-const MAX_STEP_MS = 100;
-
-const clampStepMs = (value: number, fallback: number): number => (Number.isFinite(value) ? value : fallback);
-
-const DEFAULT_BRIGHTNESS_PERCENT = 0;
-const DEFAULT_RAINBOW_STEP_MS = 0;
-const DEFAULT_BREATHING_MIN_PERCENT = 0;
-const DEFAULT_BREATHING_STEP_MS = 0;
-const MAX_BREATHING_MIN_PERCENT = 80;
-
 const isSequenceBinding = (value: unknown): value is HidBindingDto => {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<HidBindingDto>;
@@ -267,8 +256,8 @@ export default function KeypadFlasherApp() {
                 <span>Rainbow step</span>
                 <input
                   type="range"
-                    min={MIN_STEP_MS}
-                    max={MAX_STEP_MS}
+                    min={5}
+                    max={100}
                   step={1}
                   value={draftLedConfig.rainbowStepMs}
                   onChange={(e) => setRainbowStepMs(Number(e.target.value))}
@@ -291,7 +280,7 @@ export default function KeypadFlasherApp() {
                   <input
                     type="range"
                     min={0}
-                    max={MAX_BREATHING_MIN_PERCENT}
+                    max={80}
                     value={draftLedConfig.breathingMinPercent}
                     onChange={(e) => setBreathingMinPercent(Number(e.target.value))}
                   />
@@ -301,8 +290,8 @@ export default function KeypadFlasherApp() {
                   <span>Breathing step</span>
                   <input
                     type="range"
-                    min={MIN_STEP_MS}
-                    max={MAX_STEP_MS}
+                    min={5}
+                    max={100}
                     step={1}
                     value={draftLedConfig.breathingStepMs}
                     onChange={(e) => setBreathingStepMs(Number(e.target.value))}
@@ -422,36 +411,34 @@ export default function KeypadFlasherApp() {
       passiveColors,
       activeModes,
       activeColors,
-      brightnessPercent: DEFAULT_BRIGHTNESS_PERCENT,
-      rainbowStepMs: DEFAULT_RAINBOW_STEP_MS,
-      breathingMinPercent: DEFAULT_BREATHING_MIN_PERCENT,
-      breathingStepMs: DEFAULT_BREATHING_STEP_MS,
+      brightnessPercent: 100,
+      rainbowStepMs: 20,
+      breathingMinPercent: 20,
+      breathingStepMs: 20,
     };
   }, [ledCountFromLayout]);
 
-  const normalizeLedConfig = useCallback((layout: DeviceLayoutDto | null, config: LedConfigurationDto | null): LedConfigurationDto | null => {
+  const pickLedConfigForLayout = useCallback((layout: DeviceLayoutDto | null, config: LedConfigurationDto | null): LedConfigurationDto | null => {
     const count = ledCountFromLayout(layout);
     if (count <= 0) return null;
-    const base: LedConfigurationDto | null = config ?? buildDefaultLedConfig(layout);
-    if (!base) return null;
-    const normalized: LedConfigurationDto = {
-      passiveModes: base.passiveModes,
-      passiveColors: base.passiveColors,
-      activeModes: base.activeModes,
-      activeColors: base.activeColors,
-      brightnessPercent: base.brightnessPercent ?? DEFAULT_BRIGHTNESS_PERCENT,
-      rainbowStepMs: base.rainbowStepMs ?? DEFAULT_RAINBOW_STEP_MS,
-      breathingMinPercent: base.breathingMinPercent ?? DEFAULT_BREATHING_MIN_PERCENT,
-      breathingStepMs: base.breathingStepMs ?? DEFAULT_BREATHING_STEP_MS,
-    };
-    if (normalized.passiveModes.length !== count
-      || normalized.passiveColors.length !== count
-      || normalized.activeModes.length !== count
-      || normalized.activeColors.length !== count) {
-      throw new Error("LED config length mismatch for layout.");
-    }
-    return normalized;
+    if (config) return config;
+    return buildDefaultLedConfig(layout);
   }, [buildDefaultLedConfig, ledCountFromLayout]);
+
+  const assertLedConfigMatchesLayout = useCallback((layout: DeviceLayoutDto | null, config: LedConfigurationDto | null): LedConfigurationDto | null => {
+    const count = ledCountFromLayout(layout);
+    if (count <= 0) return null;
+    if (!config) {
+      throw new Error("Lighting configuration is required for this layout.");
+    }
+    if (config.passiveModes.length !== count
+      || config.passiveColors.length !== count
+      || config.activeModes.length !== count
+      || config.activeColors.length !== count) {
+      throw new Error(`Lighting configuration must have ${count} entries for this layout.`);
+    }
+    return config;
+  }, [ledCountFromLayout]);
 
   const webUsbAvailable = CH55xBootloader.isWebUsbAvailable();
   const secure = typeof window !== "undefined" ? window.isSecureContext : true;
@@ -484,14 +471,6 @@ export default function KeypadFlasherApp() {
   }, [devMode, debugFirmware]);
 
   useEffect(() => {
-    try {
-      setLedConfig((prev) => normalizeLedConfig(selectedLayout, prev));
-    } catch (err) {
-      setStatus({ state: "error", detail: String((err as Error).message ?? err) });
-    }
-  }, [selectedLayout, normalizeLedConfig]);
-
-  useEffect(() => {
     const lastId = loadLastBootloaderId();
     if (!lastId) return;
     setRememberedBootloaderId(lastId);
@@ -500,15 +479,16 @@ export default function KeypadFlasherApp() {
     const stored = loadStoredConfig(lastId);
     const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
     const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+    setSelectedLayout(nextLayout);
+    setCurrentBindings(nextBindings);
     try {
-      const nextLedConfig = normalizeLedConfig(nextLayout, stored?.ledConfig ?? null);
-      setSelectedLayout(nextLayout);
-      setCurrentBindings(nextBindings);
-      setLedConfig(nextLedConfig);
+      const pickedLedConfig = pickLedConfigForLayout(nextLayout, stored?.ledConfig ?? null);
+      const validatedLedConfig = assertLedConfigMatchesLayout(nextLayout, pickedLedConfig);
+      setLedConfig(validatedLedConfig);
     } catch (err) {
       setStatus({ state: "error", detail: String((err as Error).message ?? err) });
     }
-  }, [normalizeLedConfig]);
+  }, [assertLedConfigMatchesLayout, pickLedConfigForLayout]);
 
   const applyConnectedDevice = useCallback((info: ConnectedInfo, options: { source: "real" | "demo"; persistLastId: boolean }) => {
     const previousId = lastBootloaderIdRef.current;
@@ -540,8 +520,9 @@ export default function KeypadFlasherApp() {
 
     const nextLayout = (!sameDevice || !selectedLayout) ? (stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null)) : selectedLayout;
     try {
-      const nextLedConfig = normalizeLedConfig(nextLayout, stored?.ledConfig ?? null);
-      setLedConfig(nextLedConfig);
+      const pickedLedConfig = pickLedConfigForLayout(nextLayout, stored?.ledConfig ?? null);
+      const validatedLedConfig = assertLedConfigMatchesLayout(nextLayout, pickedLedConfig);
+      setLedConfig(validatedLedConfig);
     } catch (err) {
       setStatus({ state: "error", detail: String((err as Error).message ?? err) });
     }
@@ -550,7 +531,7 @@ export default function KeypadFlasherApp() {
       ? `${options.source === "demo" ? "Demo: " : ""}${profile.name}`
       : (options.source === "demo" ? "Demo device" : undefined);
     setStatus(profile ? { state: "connectedKnown", detail } : { state: "connectedUnknown", detail });
-  }, [currentBindings, selectedLayout, normalizeLedConfig]);
+  }, [assertLedConfigMatchesLayout, currentBindings, pickLedConfigForLayout, selectedLayout]);
 
   const restoreSavedConfig = useCallback(() => {
     const id = rememberedBootloaderId ?? lastBootloaderIdRef.current;
@@ -566,15 +547,16 @@ export default function KeypadFlasherApp() {
     const stored = loadStoredConfig(id);
     const nextLayout = stored?.layout ?? (profile?.layout ? cloneLayout(profile.layout) : null);
     const nextBindings = stored?.bindings ?? profile?.defaultBindings ?? null;
+    setSelectedLayout(nextLayout);
+    setCurrentBindings(nextBindings);
     try {
-      const nextLedConfig = normalizeLedConfig(nextLayout, stored?.ledConfig ?? null);
-      setSelectedLayout(nextLayout);
-      setCurrentBindings(nextBindings);
-      setLedConfig(nextLedConfig);
+      const pickedLedConfig = pickLedConfigForLayout(nextLayout, stored?.ledConfig ?? null);
+      const validatedLedConfig = assertLedConfigMatchesLayout(nextLayout, pickedLedConfig);
+      setLedConfig(validatedLedConfig);
     } catch (err) {
       setStatus({ state: "error", detail: String((err as Error).message ?? err) });
     }
-  }, [rememberedBootloaderId, normalizeLedConfig]);
+  }, [assertLedConfigMatchesLayout, pickLedConfigForLayout, rememberedBootloaderId]);
 
   const disconnectClient = useCallback(async (nextStatus?: Status, reboot?: boolean) => {
     const client = clientRef.current;
@@ -802,7 +784,7 @@ export default function KeypadFlasherApp() {
 
     try {
       setStatus({ state: "compiling", detail: debugFirmware ? "Debug firmware" : selectedProfile?.name });
-      const requestLedConfig = normalizeLedConfig(selectedLayout, ledConfig);
+      const requestLedConfig = assertLedConfigMatchesLayout(selectedLayout, ledConfig);
       const payload: FirmwareRequestBody = (!selectedLayout && debugFirmware)
         ? { layout: null, bindingProfile: null, debug: true, ledConfig: null }
         : { layout: selectedLayout, bindingProfile: currentBindings, debug: debugFirmware, ledConfig: requestLedConfig };
@@ -843,7 +825,7 @@ export default function KeypadFlasherApp() {
     } catch (err) {
       setStatus({ state: "compileError", detail: String((err as Error).message ?? err) });
     }
-  }, [flashBytes, debugFirmware, selectedLayout, selectedProfile, currentBindings, ledConfig, normalizeLedConfig]);
+  }, [assertLedConfigMatchesLayout, flashBytes, debugFirmware, selectedLayout, selectedProfile, currentBindings, ledConfig]);
 
   const unsupportedDevice = connectedInfo != null && selectedProfile == null;
   const userButtons = selectedLayout ? selectedLayout.buttons : [];
@@ -952,7 +934,7 @@ export default function KeypadFlasherApp() {
         profile: selectedProfile?.name ?? null,
         exportedAt: new Date().toISOString(),
         bindings: currentBindings,
-        ledConfig: normalizeLedConfig(selectedLayout, ledConfig),
+        ledConfig: assertLedConfigMatchesLayout(selectedLayout, ledConfig),
       };
       const text = JSON.stringify(payload, null, 2);
       setExportText(text);
@@ -961,7 +943,7 @@ export default function KeypadFlasherApp() {
     } catch (err) {
       setStatus({ state: "error", detail: String((err as Error).message ?? err) });
     }
-  }, [connectedInfo, currentBindings, ledConfig, normalizeLedConfig, rememberedBootloaderId, selectedLayout, selectedProfile]);
+  }, [assertLedConfigMatchesLayout, connectedInfo, currentBindings, ledConfig, rememberedBootloaderId, selectedLayout, selectedProfile]);
 
   const handleExportCopy = useCallback(async () => {
     if (!exportText) return;
@@ -1016,9 +998,9 @@ export default function KeypadFlasherApp() {
     const bindings = parsedConfig.bindings ? validateBindingProfileCandidate(parsedConfig.bindings) : null;
     if (!bindings) throw new Error("Import is missing bindings.");
     const ledCfg = parsedConfig.ledConfig ? validateLedConfigCandidate(parsedConfig.ledConfig) : null;
-    const normalizedLed = normalizeLedConfig(selectedLayout, ledCfg);
-    return { bindings, ledConfig: normalizedLed };
-  }, [connectedInfo, rememberedBootloaderId, normalizeLedConfig, selectedLayout]);
+    const validatedLed = assertLedConfigMatchesLayout(selectedLayout, ledCfg);
+    return { bindings, ledConfig: validatedLed };
+  }, [assertLedConfigMatchesLayout, connectedInfo, rememberedBootloaderId, selectedLayout]);
 
   const applyImportedConfig = useCallback((text: string) => {
     try {
@@ -1056,10 +1038,10 @@ export default function KeypadFlasherApp() {
       passiveColors: [...ledConfig.passiveColors],
       activeModes: [...ledConfig.activeModes],
       activeColors: [...ledConfig.activeColors],
-      brightnessPercent: ledConfig.brightnessPercent ?? DEFAULT_BRIGHTNESS_PERCENT,
-      rainbowStepMs: ledConfig.rainbowStepMs ?? DEFAULT_RAINBOW_STEP_MS,
-      breathingMinPercent: ledConfig.breathingMinPercent ?? DEFAULT_BREATHING_MIN_PERCENT,
-      breathingStepMs: ledConfig.breathingStepMs ?? DEFAULT_BREATHING_STEP_MS,
+      brightnessPercent: ledConfig.brightnessPercent,
+      rainbowStepMs: ledConfig.rainbowStepMs,
+      breathingMinPercent: ledConfig.breathingMinPercent,
+      breathingStepMs: ledConfig.breathingStepMs,
     });
     setLightingStatus(defaultLightingStatus);
     setFocusLedIndex(idx);
@@ -1111,23 +1093,19 @@ export default function KeypadFlasherApp() {
   };
 
   const setBrightnessPercent = (value: number) => {
-    const clamped = clampPercent(value);
-    setDraftLedConfig((prev) => (prev ? { ...prev, brightnessPercent: clamped } : prev));
+    setDraftLedConfig((prev) => (prev ? { ...prev, brightnessPercent: value } : prev));
   };
 
   const setRainbowStepMs = (value: number) => {
-    const clamped = clampStepMs(value, DEFAULT_RAINBOW_STEP_MS);
-    setDraftLedConfig((prev) => (prev ? { ...prev, rainbowStepMs: clamped } : prev));
+    setDraftLedConfig((prev) => (prev ? { ...prev, rainbowStepMs: value } : prev));
   };
 
   const setBreathingMinPercent = (value: number) => {
-    const clamped = clampPercent(value, 0, MAX_BREATHING_MIN_PERCENT);
-    setDraftLedConfig((prev) => (prev ? { ...prev, breathingMinPercent: clamped } : prev));
+    setDraftLedConfig((prev) => (prev ? { ...prev, breathingMinPercent: value } : prev));
   };
 
   const setBreathingStepMs = (value: number) => {
-    const clamped = clampStepMs(value, DEFAULT_BREATHING_STEP_MS);
-    setDraftLedConfig((prev) => (prev ? { ...prev, breathingStepMs: clamped } : prev));
+    setDraftLedConfig((prev) => (prev ? { ...prev, breathingStepMs: value } : prev));
   };
 
   const [lightingStatus, setLightingStatus] = useState<string>(defaultLightingStatus);

@@ -19,7 +19,7 @@ namespace Keypad.Flasher.Server.Configuration
             var buttons = BuildButtons(layout, buttonBindings, encoderBindings);
             var encoders = BuildEncoders(layout, encoderBindings);
             var ledCount = CalculateNeoPixelCount(buttons);
-            var normalizedLedConfig = NormalizeLedConfiguration(ledConfig, ledCount);
+            var ledConfiguration = BuildLedConfiguration(ledConfig, ledCount);
 
             return new ConfigurationDefinition(
                 Buttons: buttons,
@@ -27,7 +27,7 @@ namespace Keypad.Flasher.Server.Configuration
                 DebugMode: debugMode,
                 NeoPixelPin: layout.NeoPixelPin,
                 NeoPixelReversed: layout.NeoPixelReversed,
-                LedConfig: normalizedLedConfig);
+                LedConfig: ledConfiguration);
         }
 
         private static List<ButtonBinding> BuildButtons(
@@ -161,7 +161,7 @@ namespace Keypad.Flasher.Server.Configuration
             return count < 0 ? 0 : count;
         }
 
-        private static LedConfiguration NormalizeLedConfiguration(LedConfiguration? input, int ledCount)
+        private static LedConfiguration BuildLedConfiguration(LedConfiguration? input, int ledCount)
         {
             if (ledCount <= 0)
             {
@@ -176,25 +176,20 @@ namespace Keypad.Flasher.Server.Configuration
                     BreathingStepMs: 0);
             }
 
-            var passiveModes = input?.PassiveModes?.ToArray() ?? Array.Empty<PassiveLedMode>();
-            var passiveColors = input?.PassiveColors?.ToArray() ?? Array.Empty<LedColor>();
-            var activeModes = input?.ActiveModes?.ToArray() ?? Array.Empty<ActiveLedMode>();
-            var activeColors = input?.ActiveColors?.ToArray() ?? Array.Empty<LedColor>();
+            if (input == null)
+            {
+                throw new ArgumentException("LED configuration required for layouts with LEDs.", nameof(input));
+            }
 
-            var brightnessPercent = input?.BrightnessPercent ?? 0;
-            var rainbowStepMs = input?.RainbowStepMs ?? 0;
-            var breathingMinPercent = input?.BreathingMinPercent ?? 0;
-            var breathingStepMs = input?.BreathingStepMs ?? 0;
+            if (input.PassiveModes.Count != ledCount
+                || input.PassiveColors.Count != ledCount
+                || input.ActiveModes.Count != ledCount
+                || input.ActiveColors.Count != ledCount)
+            {
+                throw new ArgumentException($"LED configuration must contain {ledCount} entries for each LED field.");
+            }
 
-            return new LedConfiguration(
-                PassiveModes: passiveModes,
-                PassiveColors: passiveColors,
-                ActiveModes: activeModes,
-                ActiveColors: activeColors,
-                BrightnessPercent: brightnessPercent,
-                RainbowStepMs: rainbowStepMs,
-                BreathingMinPercent: breathingMinPercent,
-                BreathingStepMs: breathingStepMs);
+            return input;
         }
   }
 }
