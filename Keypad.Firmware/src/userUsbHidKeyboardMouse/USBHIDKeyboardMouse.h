@@ -69,19 +69,9 @@ extern "C" {
 void USBInit(void);
 
 uint8_t Keyboard_press(__data uint8_t k);
-uint8_t Keyboard_release(__data uint8_t k);
 void Keyboard_releaseAll(void);
-uint8_t Keyboard_pressUsage(__data uint8_t usage);
-uint8_t Keyboard_releaseUsage(__data uint8_t usage);
 uint8_t Keyboard_consumer_send(__data uint16_t usage);
 uint8_t Keyboard_consumer_try_send(__data uint16_t usage);
-
-uint8_t Keyboard_write(__data uint8_t c);
-
-uint8_t Keyboard_getLEDStatus();
-
-uint8_t Mouse_press(__data uint8_t k);
-uint8_t Mouse_release(__data uint8_t k);
 uint8_t Mouse_click(__data uint8_t k);
 uint8_t Mouse_move(__data int8_t x, __xdata int8_t y);
 uint8_t Mouse_scroll(__data int8_t tilt);

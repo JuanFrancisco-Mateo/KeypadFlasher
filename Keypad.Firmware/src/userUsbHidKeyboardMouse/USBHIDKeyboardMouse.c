@@ -297,81 +297,11 @@ uint8_t Keyboard_press(__data uint8_t k) {
   return 1;
 }
 
-uint8_t Keyboard_release(__data uint8_t k) {
-  __data uint8_t i;
-  if (k >= 136) { // it's a non-printing key (not a modifier)
-    k = k - 136;
-  } else if (k >= 128) { // it's a modifier key
-    HIDKey[0] &= ~(1 << (k - 128));
-    k = 0;
-  } else { // it's a printing key
-    k = _asciimap[k];
-    if (!k) {
-      return 0;
-    }
-    if (k &
-        0x80) { // it's a capital letter or other character reached with shift
-      HIDKey[0] &= ~(0x02); // the left shift modifier
-      k &= 0x7F;
-    }
-  }
-
-  // Test the key report to see if k is present.  Clear it if it exists.
-  // Check all positions in case the key is present more than once (which it
-  // shouldn't be)
-  for (i = 2; i < 8; i++) {
-    if (0 != k && HIDKey[i] == k) {
-      HIDKey[i] = 0x00;
-    }
-  }
-
-  USB_EP1_send(1);
-  return 1;
-}
-
 void Keyboard_releaseAll(void) {
   for (__data uint8_t i = 0; i < sizeof(HIDKey); i++) { // load data for upload
     HIDKey[i] = 0;
   }
   USB_EP1_send(1);
-}
-
-uint8_t Keyboard_pressUsage(__data uint8_t usage) {
-  if (usage == 0) {
-    return 0;
-  }
-
-  for (__data uint8_t i = 2; i < 8; i++) {
-    if (HIDKey[i] == usage) {
-      USB_EP1_send(1);
-      return 1;
-    }
-  }
-
-  for (__data uint8_t i = 2; i < 8; i++) {
-    if (HIDKey[i] == 0x00) {
-      HIDKey[i] = usage;
-      USB_EP1_send(1);
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-uint8_t Keyboard_releaseUsage(__data uint8_t usage) {
-  if (usage == 0) {
-    return 0;
-  }
-
-  for (__data uint8_t i = 2; i < 8; i++) {
-    if (HIDKey[i] == usage) {
-      HIDKey[i] = 0x00;
-    }
-  }
-
-  USB_EP1_send(1);
-  return 1;
 }
 
 uint8_t Keyboard_consumer_send(__data uint16_t usage) {
@@ -391,35 +321,13 @@ uint8_t Keyboard_consumer_try_send(__data uint16_t usage) {
   return USB_EP1_send_consumer(0);
 }
 
-uint8_t Keyboard_write(__data uint8_t c) {
-  __data uint8_t p = Keyboard_press(c); // Keydown
-  Keyboard_release(c);                  // Keyup
-  return p; // just return the result of press() since release() almost always
-            // returns 1
-}
-
-uint8_t Keyboard_getLEDStatus() {
-  return Ep1Buffer[0]; // The only info we gets
-}
-
-uint8_t Mouse_press(__data uint8_t k) {
-  memset(HIDMouse, 0, sizeof(HIDMouse));
-  HIDMouse[0] |= k;
-  USB_EP1_send(2);
-  return 1;
-}
-
-uint8_t Mouse_release(__data uint8_t k) {
-  memset(HIDMouse, 0, sizeof(HIDMouse));
-  HIDMouse[0] &= ~k;
-  USB_EP1_send(2);
-  return 1;
-}
-
 uint8_t Mouse_click(__data uint8_t k) {
-  Mouse_press(k);
+  memset(HIDMouse, 0, sizeof(HIDMouse));
+  HIDMouse[0] = k;
+  USB_EP1_send(2);
   delayMicroseconds(10000);
-  Mouse_release(k);
+  memset(HIDMouse, 0, sizeof(HIDMouse));
+  USB_EP1_send(2);
   return 1;
 }
 

@@ -154,11 +154,4 @@ void NEO_writeHue(uint8_t pixel, uint8_t hue, uint8_t bright) {
   }
 }
 
-// ===================================================================================
-// Clear Single Pixel in Buffer
-// ===================================================================================
-void NEO_clearPixel(uint8_t pixel) {
-  NEO_writeColor(pixel, 0, 0, 0);
-}
-
 #endif

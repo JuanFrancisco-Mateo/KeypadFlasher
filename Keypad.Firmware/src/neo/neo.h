@@ -39,4 +39,3 @@ void NEO_clearAll(void);                                              // clear a
 void NEO_update(void);                                                // write buffer to pixels
 void NEO_writeColor(uint8_t pixel, uint8_t r, uint8_t g, uint8_t b);  // write color to pixel in buffer
 void NEO_writeHue(uint8_t pixel, uint8_t hue, uint8_t bright);        // hue (0..191), brightness (0..2)
-void NEO_clearPixel(uint8_t pixel);                                   // clear one pixel in buffer
