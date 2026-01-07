@@ -139,7 +139,9 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    handleActionClick(tileKey, () => toggleFn(target, !currentValue), e);
+    // Bootloader flags are always visible; toggle immediately even on touch to avoid double-tap arming.
+    if (touchDeviceRef.current) setTouchArmedKey(tileKey);
+    toggleFn(target, !currentValue);
   };
 
   return (
@@ -216,7 +218,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                             <div className="encoder-binding-list">
                               <div
                                 className="encoder-binding-tile"
-                                onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                                onClick={(e) => handleTileTouchArm(tileKey, e)}
                               >
                                 <div className="encoder-binding-main">
                                   <div className="encoder-binding-top"><span className="muted small">Counter-clockwise</span></div>
@@ -227,7 +229,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                                 <div className="encoder-binding-actions hover-actions">
                                   <button
                                     className="btn button-action"
-                                    onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" }), e)}
+                                    onClick={(e) => handleActionClick(tileKey, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "ccw" }), e)}
                                   >
                                     Bindings
                                   </button>
@@ -235,7 +237,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                               </div>
                               <div
                                 className="encoder-binding-tile"
-                                onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                                onClick={(e) => handleTileTouchArm(tileKey, e)}
                               >
                                 <div className="encoder-binding-main">
                                   <div className="encoder-binding-top"><span className="muted small">Clockwise</span></div>
@@ -246,7 +248,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                                 <div className="encoder-binding-actions hover-actions">
                                   <button
                                     className="btn button-action"
-                                    onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" }), e)}
+                                    onClick={(e) => handleActionClick(tileKey, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "cw" }), e)}
                                   >
                                     Bindings
                                   </button>
@@ -255,7 +257,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                               {enc.press && (
                                 <div
                                   className="encoder-binding-tile"
-                                  onClick={(e) => handleTileTouchArm(`tile-enc-${enc.id}`, e)}
+                                  onClick={(e) => handleTileTouchArm(tileKey, e)}
                                 >
                                   <div className="encoder-binding-main">
                                     <div className="encoder-binding-top">
@@ -286,7 +288,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                                   <div className="encoder-binding-actions hover-actions">
                                     <button
                                       className="btn button-action"
-                                      onClick={(e) => handleActionClick(`tile-enc-${enc.id}`, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "press" }), e)}
+                                      onClick={(e) => handleActionClick(tileKey, () => onEdit({ type: "encoder", encoderId: enc.id, direction: "press" }), e)}
                                     >
                                       Bindings
                                     </button>
