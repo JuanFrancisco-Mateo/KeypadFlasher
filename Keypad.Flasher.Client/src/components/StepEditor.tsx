@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { DeviceLayoutDto, HidBindingDto, HidPointerType, HidStepDto } from "../lib/keypad-configs";
+import type { HidBindingDto, HidPointerType, HidStepDto } from "../lib/keypad-configs";
 import { HID_POINTER_TYPE } from "../lib/keypad-configs";
 import {
   DEFAULT_FUNCTION_POINTER,
@@ -19,13 +19,10 @@ import "./StepEditor.css";
 
 type StepEditorProps = {
   target: EditTarget | null;
-  layout: DeviceLayoutDto | null;
   binding: HidBindingDto | undefined | null;
   stepClipboard: HidStepDto[] | null;
   onSave: (binding: HidBindingDto) => void;
   onClose: () => void;
-  onToggleBootloaderOnBoot: (target: EditTarget, value: boolean) => void;
-  onToggleBootloaderChord: (target: EditTarget, value: boolean) => void;
   onUpdateStepClipboard: (steps: HidStepDto[]) => void;
   onError: (detail: string) => void;
 };
@@ -51,13 +48,10 @@ const useStableStepIds = () => {
 
 export function StepEditor({
   target,
-  layout,
   binding,
   stepClipboard,
   onSave,
   onClose,
-  onToggleBootloaderOnBoot,
-  onToggleBootloaderChord,
   onUpdateStepClipboard,
 }: StepEditorProps) {
   const { getStepId, cloneStepWithId } = useStableStepIds();
@@ -600,16 +594,6 @@ export function StepEditor({
     requestClose();
   };
 
-  const updateBootloaderOnBoot = (value: boolean) => {
-    if (!target) return;
-    onToggleBootloaderOnBoot(target, value);
-  };
-
-  const updateBootloaderChordMember = (value: boolean) => {
-    if (!target) return;
-    onToggleBootloaderChord(target, value);
-  };
-
   const requestClose = () => {
     if (!target) return;
     if (isClosingModal) return;
@@ -635,19 +619,6 @@ export function StepEditor({
   };
 
   if (!target) return null;
-
-  const bootloaderToggles = (() => {
-    if (!layout) return { onBoot: null as boolean | null, chord: null as boolean | null };
-    if (target.type === "button") {
-      const btn = layout.buttons.find((b) => b.id === target.buttonId);
-      return { onBoot: btn ? Boolean(btn.bootloaderOnBoot) : null, chord: btn ? Boolean(btn.bootloaderChordMember) : null };
-    }
-    if (target.type === "encoder" && target.direction === "press") {
-      const enc = layout.encoders.find((e) => e.id === target.encoderId);
-      return { onBoot: enc?.press ? Boolean(enc.press.bootloaderOnBoot) : null, chord: enc?.press ? Boolean(enc.press.bootloaderChordMember) : null };
-    }
-    return { onBoot: null as boolean | null, chord: null as boolean | null };
-  })();
 
   return (
     <div
@@ -675,41 +646,11 @@ export function StepEditor({
           </div>
         )}
         <div className="modal-body">
-          {(() => {
-            const { onBoot, chord } = bootloaderToggles;
-            if (onBoot == null && chord == null) return null;
-            return (
-              <div className="stack" style={{ gap: "0.35rem", marginBottom: "0.75rem" }}>
-                {localError && (
-                  <div className="status-banner status-error local-error-banner">
-                    <div className="status-title small">{localError}</div>
-                  </div>
-                )}
-                {onBoot != null && (
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={onBoot}
-                      onChange={(e) => updateBootloaderOnBoot(e.target.checked)}
-                    />
-                    Bootloader on boot (hold at power-up)
-                  </label>
-                )}
-                {chord != null && (
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={chord}
-                      onChange={(e) => updateBootloaderChordMember(e.target.checked)}
-                    />
-                    Part of bootloader chord
-                  </label>
-                )}
-                <div className="muted small">Bootloader chord = the combo you can press any time to enter bootloader without replugging.</div>
-                <div className="muted small">On-boot triggers only while plugging in; chord members reduce accidental triggers.</div>
-              </div>
-            );
-          })()}
+          {localError && (
+            <div className="status-banner status-error local-error-banner" style={{ marginBottom: "0.75rem" }}>
+              <div className="status-title small">{localError}</div>
+            </div>
+          )}
           <div className="steps-pane">
             <div className="step-controls">
               <div className="muted small">{selectedStepIndices.length > 0 ? `${selectedStepIndices.length} selected` : "Select or drag steps to move them. Copy/paste to duplicate."}</div>

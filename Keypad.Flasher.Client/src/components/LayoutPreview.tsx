@@ -15,13 +15,15 @@ type LayoutPreviewProps = {
   warnSingleChord: boolean;
   onEdit: (target: EditTarget) => void;
   onOpenLightingForLed: (ledIndex: number) => void;
+  onToggleBootloaderOnBoot: (target: EditTarget, value: boolean) => void;
+  onToggleBootloaderChord: (target: EditTarget, value: boolean) => void;
   onResetDefaults?: () => void;
   onExportConfig?: () => void;
   onImportConfig?: () => void;
   canReset?: boolean;
 };
 
-export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onResetDefaults, onExportConfig, onImportConfig, canReset }: LayoutPreviewProps) {
+export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindings, ledConfig, warnNoBootEntry, warnSingleChord, onEdit, onOpenLightingForLed, onToggleBootloaderOnBoot, onToggleBootloaderChord, onResetDefaults, onExportConfig, onImportConfig, canReset }: LayoutPreviewProps) {
   const sortedButtons = [...layout.buttons].sort((a, b) => a.id - b.id);
   const encoderCount = layout.encoders.length;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -66,7 +68,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   const handleGridPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return; // allow middle-click auto-scroll and right-click
     const target = e.target as HTMLElement | null;
-    if (target && (target.closest(".button-tile .button-action") || target.closest(".encoder-binding-tile .button-action"))) return; // let action buttons click
+    if (target && (target.closest(".button-tile .button-action") || target.closest(".encoder-binding-tile .button-action") || target.closest(".boot-toggle"))) return; // let action buttons click
     setTouchArmedKey(null);
     const el = e.currentTarget;
     if (!isGridScrollable(el)) return;
@@ -95,7 +97,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     }
   };
 
-  const handleActionClick = (tileKey: string, action: () => void, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleActionClick = (tileKey: string, action: () => void, e: React.MouseEvent<HTMLElement>) => {
     if (touchDeviceRef.current) {
       if (touchArmedKey !== tileKey) {
         e.preventDefault();
@@ -126,6 +128,18 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     }
   };
 
+  const handleFlagToggle = (
+    tileKey: string,
+    target: EditTarget,
+    currentValue: boolean,
+    toggleFn: (target: EditTarget, value: boolean) => void,
+    e: React.MouseEvent<HTMLElement>,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleActionClick(tileKey, () => toggleFn(target, !currentValue), e);
+  };
+
   return (
     <div className="panel">
       <div className="panel-header layout-panel-header">
@@ -141,15 +155,6 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
           )}
         </div>
       </div>
-      {(warnNoBootEntry || warnSingleChord) && (
-        <div className="status-banner status-warn" style={{ marginTop: "0.5rem" }}>
-          <div className="status-title">Bootloader entry tips</div>
-          <div className="status-body">
-            {warnNoBootEntry && <div>No bootloader entry configured. Enable on-boot or add a chord so you can re-enter bootloader.</div>}
-            {warnSingleChord && <div>Bootloader chord has only one member; disable entirely or add another to avoid accidental triggers.</div>}
-          </div>
-        </div>
-      )}
       <div className="muted small bootloader-legend" style={{ marginTop: "0.4rem" }}>
         <span className="legend-label">Bootloader configuration:</span>
         <span className="legend-item">
@@ -159,9 +164,18 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
         <span className="legend-item">
           <span className="material-symbols-outlined legend-icon">link</span>
           <span className="legend-text">Part of the bootloader chord you can press anytime.</span>
-          <span className="legend-text">Edit Bindings to configure.</span>
+          <span className="legend-text">Press icons to configure.</span>
         </span>
       </div>
+      {(warnNoBootEntry || warnSingleChord) && (
+        <div className="status-banner status-warn" style={{ marginTop: "0.5rem" }}>
+          <div className="status-title">Bootloader warning</div>
+          <div className="status-body">
+            {warnNoBootEntry && <div>No bootloader entry method configured. Enable key(s) on power up or add a chord so you can re-enter bootloader.</div>}
+            {warnSingleChord && <div>Bootloader chord has only one member; disable entirely or add another to avoid accidental triggers.</div>}
+          </div>
+        </div>
+      )}
       <div className={`layout-preview${encoderCount === 0 ? " no-encoders" : ""}`}>
         <div
           className={`layout-scroll${gridScrollable ? " scrollable" : ""}`}
@@ -189,6 +203,8 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                         const pressBootloaderChordMember = Boolean(enc.press?.bootloaderChordMember);
                         const pressBootIcon = pressBootloaderOnBoot ? "power" : "power_off";
                         const pressChordIcon = pressBootloaderChordMember ? "link" : "link_off";
+                        const tileKey = `tile-enc-${enc.id}`;
+                        const encoderTarget: EditTarget = { type: "encoder", encoderId: enc.id, direction: "press" };
                         return (
                           <div className="encoder-tile" key={enc.id}>
                             <div className="encoder-label">Encoder {enc.id + 1}</div>
@@ -238,19 +254,25 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                                 >
                                   <div className="encoder-binding-main">
                                     <div className="encoder-binding-top">
-                                      <span
-                                        className={`button-flag boot-flag material-symbols-outlined${pressBootloaderOnBoot ? "" : " inactive"}`}
-                                        aria-hidden="true"
+                                      <button
+                                        type="button"
+                                        className={`button-flag boot-flag boot-toggle material-symbols-outlined${pressBootloaderOnBoot ? "" : " inactive"}`}
+                                        aria-pressed={pressBootloaderOnBoot}
+                                        onClick={(e) => handleFlagToggle(tileKey, encoderTarget, pressBootloaderOnBoot, onToggleBootloaderOnBoot, e)}
+                                        title="Toggle bootloader on boot"
                                       >
                                         {pressBootIcon}
-                                      </span>
+                                      </button>
                                       <span className="muted small">Press</span>
-                                      <span
-                                        className={`button-flag chord-flag material-symbols-outlined${pressBootloaderChordMember ? "" : " inactive"}`}
-                                        aria-hidden="true"
+                                      <button
+                                        type="button"
+                                        className={`button-flag chord-flag boot-toggle material-symbols-outlined${pressBootloaderChordMember ? "" : " inactive"}`}
+                                        aria-pressed={pressBootloaderChordMember}
+                                        onClick={(e) => handleFlagToggle(tileKey, encoderTarget, pressBootloaderChordMember, onToggleBootloaderChord, e)}
+                                        title="Toggle bootloader chord membership"
                                       >
                                         {pressChordIcon}
-                                      </span>
+                                      </button>
                                     </div>
                                     <div className="encoder-binding-body">
                                       <span className="binding-text">{press}</span>
@@ -281,6 +303,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                         >
                           {Array.from({ length: count }).map((_, colIdx) => {
                             const button = sortedButtons[buttonCursor];
+                            const tileKey = `tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`;
                             const label = button ? `Button ${button.id + 1}` : `Button ${buttonCursor + 1}`;
                             const bootloaderOnBoot = Boolean(button?.bootloaderOnBoot);
                             const bootloaderChordMember = Boolean(button?.bootloaderChordMember);
@@ -299,7 +322,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                               <div
                                 className={className}
                                 key={`btn-${rowIdx}-${colIdx}-${animRevision}`}
-                                onClick={(e) => handleTileTouchArm(`tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`, e)}
+                                onClick={(e) => handleTileTouchArm(tileKey, e)}
                               >
                                 {hasLed && passive && passiveColor && (
                                   <div className="button-bg" aria-hidden="true">
@@ -321,19 +344,35 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                                 )}
                                 <div className="button-main">
                                   <div className="button-label-row" title={label}>
-                                    <span
-                                      className={`button-flag boot-flag material-symbols-outlined${bootloaderOnBoot ? "" : " inactive"}`}
-                                      aria-hidden="true"
+                                    <button
+                                      type="button"
+                                      className={`button-flag boot-flag boot-toggle material-symbols-outlined${bootloaderOnBoot ? "" : " inactive"}`}
+                                      aria-pressed={bootloaderOnBoot}
+                                      disabled={!button}
+                                      onClick={(e) => {
+                                        if (!button) return;
+                                        handleFlagToggle(tileKey, { type: "button", buttonId: button.id }, bootloaderOnBoot, onToggleBootloaderOnBoot, e);
+                                      }}
+                                      aria-disabled={!button}
+                                      title="Toggle bootloader on boot"
                                     >
                                       {bootIcon}
-                                    </span>
+                                    </button>
                                     <span className="button-label-pill small">{label}</span>
-                                    <span
-                                      className={`button-flag chord-flag material-symbols-outlined${bootloaderChordMember ? "" : " inactive"}`}
-                                      aria-hidden="true"
+                                    <button
+                                      type="button"
+                                      className={`button-flag chord-flag boot-toggle material-symbols-outlined${bootloaderChordMember ? "" : " inactive"}`}
+                                      aria-pressed={bootloaderChordMember}
+                                      disabled={!button}
+                                      onClick={(e) => {
+                                        if (!button) return;
+                                        handleFlagToggle(tileKey, { type: "button", buttonId: button.id }, bootloaderChordMember, onToggleBootloaderChord, e);
+                                      }}
+                                      aria-disabled={!button}
+                                      title="Toggle bootloader chord membership"
                                     >
                                       {chordIcon}
-                                    </span>
+                                    </button>
                                   </div>
                                   <span className="binding-text">{binding}</span>
                                 </div>

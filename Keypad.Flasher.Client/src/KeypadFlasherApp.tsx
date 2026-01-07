@@ -312,7 +312,7 @@ export default function KeypadFlasherApp() {
               </label>
             )}
             <div className="muted small" style={{ width: "100%" }}>
-              Lower ms values run faster; higher ms values slow the animation. Range 5–100 ms per step. Breathing min brightness is capped at 80% to keep the effect visible.
+              Lower step values run faster, higher step values slow the animations.
             </div>
           </div>
         </div>
@@ -1387,6 +1387,8 @@ export default function KeypadFlasherApp() {
             warnSingleChord={warnSingleChord}
             onEdit={openEdit}
             onOpenLightingForLed={openLightingForLed}
+            onToggleBootloaderOnBoot={updateBootloaderOnBoot}
+            onToggleBootloaderChord={updateBootloaderChordMember}
             onExportConfig={openExportModal}
             onImportConfig={openImportModal}
             onResetDefaults={selectedProfile?.defaultBindings ? resetToDefaults : undefined}
@@ -1397,13 +1399,10 @@ export default function KeypadFlasherApp() {
         {editorTarget && (
           <StepEditor
             target={editorTarget}
-            layout={selectedLayout}
             binding={editorBinding}
             stepClipboard={stepClipboard}
             onSave={handleEditorSave}
             onClose={handleEditorClose}
-            onToggleBootloaderOnBoot={updateBootloaderOnBoot}
-            onToggleBootloaderChord={updateBootloaderChordMember}
             onUpdateStepClipboard={setStepClipboard}
             onError={(detail) => setStatus({ state: "error", detail })}
           />

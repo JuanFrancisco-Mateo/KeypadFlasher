@@ -282,7 +282,6 @@
   left: 0px;
   right: 0px;
   z-index: 4;
-  pointer-events: none;
   background: transparent;
   padding: 0;
   border-radius: 0;
@@ -322,7 +321,10 @@
   color: var(--flag-text);
   box-shadow: var(--shadow);
   position: relative;
-  pointer-events: none;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .button-flag.material-symbols-outlined {
@@ -369,6 +371,12 @@
   box-shadow: none;
 }
 
+.button-flag:disabled,
+.button-flag[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.75;
+}
+
 .button-flag.placeholder {
   opacity: 0.6;
 }
@@ -385,6 +393,7 @@
   border-radius: 12px;
   box-shadow: var(--shadow-strong);
   z-index: 5;
+  pointer-events: none;
 }
 
 .hover-actions {
@@ -396,12 +405,21 @@
 .button-tile:hover .hover-actions,
 .button-tile:focus-within .hover-actions {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .encoder-binding-tile:hover .hover-actions,
 .encoder-binding-tile:focus-within .hover-actions {
   opacity: 1;
+}
+
+.hover-actions .button-action {
+  pointer-events: none;
+}
+
+.button-tile:hover .hover-actions .button-action,
+.button-tile:focus-within .hover-actions .button-action,
+.encoder-binding-tile:hover .hover-actions .button-action,
+.encoder-binding-tile:focus-within .hover-actions .button-action {
   pointer-events: auto;
 }
 
