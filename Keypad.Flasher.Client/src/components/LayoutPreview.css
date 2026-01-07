@@ -1,5 +1,5 @@
 .layout-preview {
-  --tile-size: 192px;
+  --tile-size: 196px;
   --tile-gap: 12px;
   --row-padding: 6px;
   display: block;
@@ -271,29 +271,106 @@
   align-items: center;
   position: relative;
   z-index: 1;
-  padding-top: 42px;
+  padding-top: 46px;
   flex: 1;
   justify-content: center;
 }
 
-.button-label {
+.button-label-row {
   position: absolute;
   top: 0px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0px;
+  right: 0px;
   z-index: 4;
-  background: var(--card-bg);
-  padding: 6px 24px;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  max-width: 90%;
+  pointer-events: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.button-label-pill {
+  display: inline-block;
+  max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  justify-self: center;
+}
+
+.button-flag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  background: var(--flag-bg);
+  color: var(--flag-text);
+  box-shadow: var(--shadow);
+  position: relative;
+  pointer-events: none;
+}
+
+.button-flag.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 20;
+}
+
+.bootloader-legend {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.legend-text {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.button-flag.boot-flag,
+.button-flag.chord-flag {
+  background: var(--flag-bg);
+  color: var(--flag-text);
+}
+
+.button-flag.inactive {
+  background: var(--flag-bg-muted);
+  color: var(--flag-text-muted);
+  box-shadow: none;
+}
+
+.button-flag.placeholder {
+  opacity: 0.6;
 }
 
 .button-tile-actions {
@@ -302,12 +379,12 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
   background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.24));
   padding: 56px 12px 14px;
   border-radius: 12px;
   box-shadow: var(--shadow-strong);
-  z-index: 2;
+  z-index: 5;
 }
 
 .hover-actions {
@@ -354,8 +431,8 @@
   );
   animation: rainbow-roll var(--rainbow-duration, 13s) steps(192) infinite;
   animation-delay: var(--rainbow-delay, 0s);
-  mix-blend-mode: screen;
-  opacity: 1;
+  mix-blend-mode: var(--rainbow-blend-mode, multiply);
+  opacity: var(--rainbow-overlay-opacity, 1);
   pointer-events: none;
   z-index: 0;
 }
@@ -404,7 +481,7 @@
 .binding-text {
   display: block;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -449,7 +526,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
 }
 
 .encoder-binding-top .muted {
@@ -476,13 +553,13 @@
   align-items: center;
   position: relative;
   z-index: 1;
-  padding-top: 4px;
   text-align: center;
   flex: 1;
 }
 
 .encoder-binding-tile .binding-text {
   text-align: center;
+  margin-bottom: 0px;
 }
 
 .encoder-binding-body {

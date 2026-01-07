@@ -46,6 +46,12 @@
   --pill-text: #ffffff;
   --pill-warn-bg: #f59e0b;
   --pill-warn-text: #0f172a;
+  --flag-bg: #0f62fe;
+  --flag-text: #ffffff;
+  --flag-bg-muted: #cbd5e1;
+  --flag-text-muted: #1f2937;
+  --rainbow-blend-mode: multiply;
+  --rainbow-overlay-opacity: 0.95;
 
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
@@ -106,6 +112,12 @@
     --pill-text: #0b1220;
     --pill-warn-bg: #fbbf24;
     --pill-warn-text: #0b1220;
+    --flag-bg: #69a6ff;
+    --flag-text: #0b1220;
+    --flag-bg-muted: #25344c;
+    --flag-text-muted: #e5e7eb;
+    --rainbow-blend-mode: screen;
+    --rainbow-overlay-opacity: 1;
   }
 }
 
