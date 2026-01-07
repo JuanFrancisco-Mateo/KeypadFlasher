@@ -21,10 +21,12 @@ type StepEditorProps = {
   target: EditTarget | null;
   layout: DeviceLayoutDto | null;
   binding: HidBindingDto | undefined | null;
+  stepClipboard: HidStepDto[] | null;
   onSave: (binding: HidBindingDto) => void;
   onClose: () => void;
   onToggleBootloaderOnBoot: (target: EditTarget, value: boolean) => void;
   onToggleBootloaderChord: (target: EditTarget, value: boolean) => void;
+  onUpdateStepClipboard: (steps: HidStepDto[]) => void;
   onError: (detail: string) => void;
 };
 
@@ -51,11 +53,12 @@ export function StepEditor({
   target,
   layout,
   binding,
+  stepClipboard,
   onSave,
   onClose,
   onToggleBootloaderOnBoot,
   onToggleBootloaderChord,
-  onError,
+  onUpdateStepClipboard,
 }: StepEditorProps) {
   const { getStepId, cloneStepWithId } = useStableStepIds();
   const [editSteps, setEditSteps] = useState<HidStepDto[]>([]);
@@ -70,7 +73,7 @@ export function StepEditor({
   const [highlightedSteps, setHighlightedSteps] = useState<number[]>([]);
   const [removingStepIds, setRemovingStepIds] = useState<string[]>([]);
   const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
-  const [stepClipboard, setStepClipboard] = useState<HidStepDto[] | null>(null);
+  const [localError, setLocalError] = useState<string>("");
 
   const hiddenKeyInputRef = useRef<HTMLInputElement | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
@@ -90,6 +93,12 @@ export function StepEditor({
     removeTimerRef.current.clear();
     resetModalClosePending();
   }, []);
+
+  useEffect(() => {
+    if (!localError) return undefined;
+    const timer = window.setTimeout(() => setLocalError(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [localError]);
 
   useEffect(() => {
     if (!target) return;
@@ -384,12 +393,12 @@ export function StepEditor({
     const copied = indices.map((i) => editSteps[i]);
     const serialized = JSON.parse(JSON.stringify(copied)) as HidStepDto[]; // deep copy to decouple edits
     const normalized = serialized.map((s) => normalizeIncomingStep(s));
-    setStepClipboard(normalized);
+    onUpdateStepClipboard(normalized);
   };
 
   const pasteStepsFromClipboard = () => {
     if (!stepClipboard || stepClipboard.length === 0) {
-      onError("Nothing to paste yet. Copy steps first.");
+      setLocalError("Nothing to paste yet. Copy steps first.");
       return;
     }
     const normalized = stepClipboard.map((s) => normalizeIncomingStep(s));
@@ -582,7 +591,7 @@ export function StepEditor({
     });
 
     if (mergedSteps.some((s) => s.kind === "Function" && !s.functionPointer)) {
-      onError("Select a function for all function steps.");
+      setLocalError("Select a function for all function steps.");
       return;
     }
 
@@ -604,6 +613,7 @@ export function StepEditor({
   const requestClose = () => {
     if (!target) return;
     if (isClosingModal) return;
+    setLocalError("");
     setIsClosingModal(true);
     resetModalClosePending();
     setCapturingStepIndex(null);
@@ -670,6 +680,11 @@ export function StepEditor({
             if (onBoot == null && chord == null) return null;
             return (
               <div className="stack" style={{ gap: "0.35rem", marginBottom: "0.75rem" }}>
+                {localError && (
+                  <div className="status-banner status-error local-error-banner">
+                    <div className="status-title small">{localError}</div>
+                  </div>
+                )}
                 {onBoot != null && (
                   <label className="checkbox">
                     <input
@@ -702,7 +717,13 @@ export function StepEditor({
                 <button className="btn ghost" onClick={selectAllSteps} disabled={editSteps.length === 0}>Select all</button>
                 <button className="btn ghost" onClick={clearSelectedSteps} disabled={selectedStepIndices.length === 0}>Clear selection</button>
                 <button className="btn ghost" onClick={removeSelectedSteps} disabled={selectedStepIndices.length === 0}>Remove selected</button>
-                <button className="btn ghost" onClick={copyStepsToClipboard} disabled={editSteps.length === 0}>Copy</button>
+                <button
+                  className="btn ghost"
+                  onClick={copyStepsToClipboard}
+                  disabled={selectedStepIndices.length === 0}
+                >
+                  Copy
+                </button>
                 <button className="btn ghost" onClick={pasteStepsFromClipboard}>Paste</button>
               </div>
             </div>

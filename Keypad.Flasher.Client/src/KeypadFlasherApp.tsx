@@ -15,6 +15,7 @@ import {
   type BindingProfileDto,
   type DeviceLayoutDto,
   type HidBindingDto,
+  type HidStepDto,
   type KnownDeviceProfile,
 } from "./lib/keypad-configs";
 import { normalizeIncomingStep } from "./lib/binding-utils";
@@ -360,6 +361,7 @@ export default function KeypadFlasherApp() {
   const [ledConfig, setLedConfig] = useState<LedConfigurationDto | null>(null);
   const [editorTarget, setEditorTarget] = useState<EditTarget | null>(null);
   const [editorBinding, setEditorBinding] = useState<HidBindingDto | null>(null);
+  const [stepClipboard, setStepClipboard] = useState<HidStepDto[] | null>(null);
   const [showLightingModal, setShowLightingModal] = useState<boolean>(false);
   const [focusLedIndex, setFocusLedIndex] = useState<number | null>(null);
   const [copiedLedLighting, setCopiedLedLighting] = useState<{ passiveMode: PassiveLedMode; passive: LedColor; activeMode: ActiveLedMode; activeColor: LedColor } | null>(null);
@@ -1397,10 +1399,12 @@ export default function KeypadFlasherApp() {
             target={editorTarget}
             layout={selectedLayout}
             binding={editorBinding}
+            stepClipboard={stepClipboard}
             onSave={handleEditorSave}
             onClose={handleEditorClose}
             onToggleBootloaderOnBoot={updateBootloaderOnBoot}
             onToggleBootloaderChord={updateBootloaderChordMember}
+            onUpdateStepClipboard={setStepClipboard}
             onError={(detail) => setStatus({ state: "error", detail })}
           />
         )}
