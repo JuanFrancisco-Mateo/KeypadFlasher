@@ -1,6 +1,8 @@
 General:
 - You can only delete files by running shell commands, the patch tool does not work for this
   - TODO: Remove when fixed: https://github.com/microsoft/vscode/issues/275705
+- Do not worry about backwards compatibility, breaking changes are no problem
+  - The only exception to this is the import/export file format, which should remain compatible
 
 Keypad.Firmware:
 - This is an Arduino project running on a microcontroller
@@ -22,3 +24,4 @@ Keypad.Flasher.Client:
 - This is a React frontend application
 - Use `npm run build` to compile
 - Always compile after changing frontend code to test
+- TypeScript is used with strict type checking enabled, avoid using `any` type

@@ -4,6 +4,7 @@
   --muted-color: #4b5563;
   --card-bg: #ffffff;
   --panel-bg: #ffffff;
+  --encoder-bg: #f6f7fb;
   --border-color: #e5e7eb;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-strong: 0 8px 18px rgba(0, 0, 0, 0.08);
@@ -63,6 +64,7 @@
     --muted-color: #94a3b8;
     --card-bg: #0f172a;
     --panel-bg: #0f172a;
+    --encoder-bg: #0c1528;
     --border-color: #1f2937;
     --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
     --shadow-strong: 0 10px 24px rgba(0, 0, 0, 0.45);
@@ -295,7 +297,7 @@ input[type="color"] {
 
 .lighting-modal,
 .modal.lighting-modal {
-  width: min(360px, 95vw);
+  width: min(410px, 95vw);
 }
 
 .modal.step-modal {
@@ -512,6 +514,17 @@ input[type="color"] {
   margin-top: 4px;
   color: var(--muted-color);
   font-size: 13px;
+}
+
+.status-body .code-block {
+  margin-top: 8px;
+}
+
+.status-code-block {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .status-success {

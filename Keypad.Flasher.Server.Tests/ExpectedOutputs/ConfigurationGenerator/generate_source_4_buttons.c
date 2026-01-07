@@ -145,5 +145,9 @@ const led_configuration_t led_configuration = {
     .passive_colors = led_passive_colors,
     .active_modes = led_active_modes,
     .active_colors = led_active_colors,
-    .count = 4
+    .count = 4,
+    .brightness_percent = 100,
+    .rainbow_step_ms = 20,
+    .breathing_min_percent = 20,
+    .breathing_step_ms = 20
 };

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HidBindingDto, DeviceLayoutDto } from "../lib/keypad-configs";
 import { describeBinding } from "../lib/binding-utils";
 import type { EditTarget, LedConfigurationDto } from "../types";
+import { LightingPreview } from "./LightingPreview";
 import "./LayoutPreview.css";
 
 type LayoutPreviewProps = {
@@ -28,6 +29,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
   const [gridScrollable, setGridScrollable] = useState(false);
   const [touchArmedKey, setTouchArmedKey] = useState<string | null>(null);
   const touchDeviceRef = useRef<boolean>(false);
+  const [animRevision, setAnimRevision] = useState(0);
 
   const isGridScrollable = (el: HTMLDivElement | null) => !!el && el.scrollWidth > el.clientWidth + 1;
 
@@ -36,6 +38,16 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     const hasTouch = "ontouchstart" in window || (navigator.maxTouchPoints ?? 0) > 0 || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     touchDeviceRef.current = hasTouch;
   }, []);
+
+  useEffect(() => {
+    // Bump to remount animated tiles so rainbow/breathing stay in sync when timing changes.
+    setAnimRevision((rev) => rev + 1);
+  }, [
+    ledConfig?.rainbowStepMs,
+    ledConfig?.breathingStepMs,
+    ledConfig?.breathingMinPercent,
+    ledConfig?.passiveModes,
+  ]);
 
   useEffect(() => {
     const el = gridRef.current;
@@ -50,26 +62,6 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
     if (inner instanceof Element) observer.observe(inner);
     return () => observer.disconnect();
   }, []);
-
-  const passiveStyleForButton = (ledIndex: number): { className?: string; style?: CSSProperties } => {
-    if (!ledConfig || ledIndex < 0 || ledIndex >= ledConfig.passiveColors.length || ledIndex >= ledConfig.passiveModes.length) return {};
-    const mode = ledConfig.passiveModes[ledIndex];
-    if (mode === "Rainbow") {
-      return { className: "rainbow" };
-    }
-    if (mode === "Static") {
-      const color = ledConfig.passiveColors[ledIndex];
-      return {
-        style: {
-          background: "var(--card-bg)",
-          backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.24), rgba(${color.r}, ${color.g}, ${color.b}, 0.12))`,
-          boxShadow: "var(--shadow-strong)",
-          borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, 0.32)`,
-        }
-      };
-    }
-    return {};
-  };
 
   const handleGridPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return; // allow middle-click auto-scroll and right-click
@@ -262,18 +254,38 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
                             const label = button ? `Button ${button.id + 1}` : `Button ${buttonCursor + 1}`;
                             const binding = button ? describeBinding(buttonBindings.get(button.id)) : "Unassigned";
                             buttonCursor += 1;
-                            const passive = passiveStyleForButton(button ? button.ledIndex : -1);
-                            const className = `button-tile clickable${passive.className ? ` ${passive.className}` : ""}`;
                             const ledIndex = button ? button.ledIndex : -1;
                             const hasLed = !!ledConfig && ledIndex >= 0 && ledIndex < ledConfig.passiveColors.length;
+                            const passive = hasLed && ledConfig ? ledConfig.passiveModes[ledIndex] : undefined;
+                            const passiveColor = hasLed && ledConfig ? ledConfig.passiveColors[ledIndex] : undefined;
+                            const activeMode = hasLed && ledConfig ? ledConfig.activeModes[ledIndex] : undefined;
+                            const activeColor = hasLed && ledConfig ? ledConfig.activeColors[ledIndex] : undefined;
+                            const className = "button-tile clickable";
                             return (
                               <div
                                 className={className}
-                                key={`btn-${rowIdx}-${colIdx}`}
-                                style={passive.style}
+                                key={`btn-${rowIdx}-${colIdx}-${animRevision}`}
                                 title={button ? "Use the Bindings button to edit" : undefined}
                                 onClick={(e) => handleTileTouchArm(`tile-btn-${button ? button.id : `${rowIdx}-${colIdx}`}`, e)}
                               >
+                                {hasLed && passive && passiveColor && (
+                                  <div className="button-bg" aria-hidden="true">
+                                    <LightingPreview
+                                      passiveMode={passive}
+                                      passiveColor={passiveColor}
+                                      activeMode={activeMode}
+                                      activeColor={activeColor}
+                                      rainbowStepMs={ledConfig?.rainbowStepMs}
+                                      breathingMinPercent={ledConfig?.breathingMinPercent}
+                                      breathingStepMs={ledConfig?.breathingStepMs}
+                                      ledIndex={ledIndex}
+                                      size="md"
+                                      interactive={false}
+                                      muted
+                                      style={{ width: "100%", height: "100%", pointerEvents: "none" }}
+                                    />
+                                  </div>
+                                )}
                                 <div className="button-main">
                                   <span className="small button-label">{label}</span>
                                   <span className="binding-text">{binding}</span>

@@ -161,48 +161,61 @@ export const defaultMouseValue = (pointerType: HidPointerType): number => {
   return 0;
 };
 
-export const normalizeIncomingStep = (step: any): HidStepDto => {
-  if (step && typeof step === "object" && "kind" in step) {
-    const typed = step as HidStepDto;
-    if (typed.kind === "Key") {
-      const modifiers = typed.modifiers || 0;
-      const rawKeycode = typeof typed.keycode === "number" ? typed.keycode : 0;
+const requireNumber = (value: unknown, label: string): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  throw new Error(`${label} must be a number.`);
+};
+
+export const normalizeIncomingStep = (step: unknown): HidStepDto => {
+  if (!step || typeof step !== "object") {
+    throw new Error("Step must be an object.");
+  }
+
+  const candidate = step as {
+    kind?: unknown;
+    keycode?: unknown;
+    modifiers?: unknown;
+    holdMs?: unknown;
+    gapMs?: unknown;
+    pointerType?: unknown;
+    pointerValue?: unknown;
+    functionPointer?: unknown;
+    functionValue?: unknown;
+  };
+
+  switch (candidate.kind) {
+    case "Key": {
+      const modifiers = requireNumber(candidate.modifiers ?? 0, "Key modifiers");
+      const rawKeycode = requireNumber(candidate.keycode ?? 0, "Key keycode");
       const keycode = rawKeycode === 0 && modifiers === 0 ? 97 : rawKeycode;
-      const holdMs = typed.holdMs > 0 ? typed.holdMs : 10;
-      const gapMs = typed.gapMs > 0 ? typed.gapMs : 10;
-      return { ...typed, keycode, modifiers, holdMs, gapMs };
+      const holdMs = requireNumber(candidate.holdMs ?? 10, "Key holdMs");
+      const gapMs = requireNumber(candidate.gapMs ?? 10, "Key gapMs");
+      return { kind: "Key", keycode, modifiers, holdMs, gapMs };
     }
-    if (typed.kind === "Pause") {
-      return { kind: "Pause", gapMs: typed.gapMs > 0 ? typed.gapMs : 100 };
+    case "Pause": {
+      const gapMs = requireNumber(candidate.gapMs ?? 100, "Pause gapMs");
+      return { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 };
     }
-    if (typed.kind === "Mouse") {
-      const pointerType = typeof typed.pointerType === "number" ? typed.pointerType as HidPointerType : HID_POINTER_TYPE.LeftClick;
-      const rawValue = typeof typed.pointerValue === "number" ? typed.pointerValue : defaultMouseValue(pointerType);
+    case "Mouse": {
+      const pointerType = requireNumber(candidate.pointerType ?? HID_POINTER_TYPE.LeftClick, "Mouse pointerType") as HidPointerType;
+      const rawValue = typeof candidate.pointerValue === "number" ? candidate.pointerValue : defaultMouseValue(pointerType);
       const pointerValue = (pointerType === HID_POINTER_TYPE.LeftClick || pointerType === HID_POINTER_TYPE.RightClick)
         ? 0
         : (rawValue === 0 ? defaultMouseValue(pointerType) : rawValue);
-      const gapMs = typeof typed.gapMs === "number" && typed.gapMs >= 0 ? typed.gapMs : 0;
-      return { kind: "Mouse", pointerType, pointerValue, gapMs };
+      const gapMs = requireNumber(candidate.gapMs ?? 0, "Mouse gapMs");
+      return { kind: "Mouse", pointerType, pointerValue, gapMs: gapMs >= 0 ? gapMs : 0 };
     }
-    const functionPointer = typed.functionPointer || DEFAULT_FUNCTION_POINTER;
-    return { kind: "Function", functionPointer, gapMs: typed.gapMs ?? 0, functionValue: (typed as any).functionValue ?? 1 };
+    case "Function": {
+      const functionPointer = typeof candidate.functionPointer === "string" && candidate.functionPointer
+        ? candidate.functionPointer
+        : DEFAULT_FUNCTION_POINTER;
+      const gapMs = requireNumber(candidate.gapMs ?? 0, "Function gapMs");
+      const functionValue = requireNumber(candidate.functionValue ?? 1, "Function functionValue");
+      return { kind: "Function", functionPointer, gapMs, functionValue };
+    }
+    default:
+      throw new Error("Unsupported step kind.");
   }
-
-  if (step && typeof step === "object" && "functionPointer" in step) {
-    const gapMs = typeof step.gapMs === "number" ? step.gapMs : 0;
-    const functionValue = typeof (step as any).functionValue === "number" ? (step as any).functionValue : 1;
-    const functionPointer = (step as any).functionPointer || DEFAULT_FUNCTION_POINTER;
-    return { kind: "Function", functionPointer, gapMs, functionValue };
-  }
-
-  const keycode = typeof step?.keycode === "number" ? step.keycode : 0;
-  const modifiers = typeof step?.modifiers === "number" ? step.modifiers : 0;
-  const holdMs = typeof step?.holdMs === "number" ? step.holdMs : 0;
-  const gapMs = typeof step?.gapMs === "number" ? step.gapMs : 0;
-  if (keycode === 0 && modifiers === 0) {
-    return { kind: "Pause", gapMs: gapMs > 0 ? gapMs : 100 };
-  }
-  return { kind: "Key", keycode: keycode === 0 ? 97 : keycode, modifiers, holdMs: holdMs > 0 ? holdMs : 10, gapMs: gapMs > 0 ? gapMs : 10 };
 };
 
 export const describeBinding = (binding: HidBindingDto | undefined | null): string => {

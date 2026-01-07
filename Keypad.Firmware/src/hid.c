@@ -1,9 +1,9 @@
 #include <Arduino.h>
+#include "../configuration.h"
 #include "userUsbHidKeyboardMouse/USBHIDKeyboardMouse.h"
 #include "led.h"
 #include "hid.h"
 #include "configuration_data.h"
-#include "../configuration.h"
 
 #if !CONFIGURATION_DEBUG_MODE
 

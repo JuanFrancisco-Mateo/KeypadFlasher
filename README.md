@@ -6,7 +6,7 @@ This project contains custom firmware compatible with a number of different CH55
 
 This project is work in progress, what's left to do:
 - Build the adapter to easily enter bootloader mode without opening the device up or making the contraption manually
-- More LED features: brightness, rainbow speed, more effects
+- Remove use of `any` in TypeScript code
 
 ## Usage
 

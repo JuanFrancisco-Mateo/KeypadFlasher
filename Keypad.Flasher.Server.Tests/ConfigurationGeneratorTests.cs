@@ -50,6 +50,7 @@ namespace Keypad.Flasher.Server.Tests
                 "#define CONFIGURATION_BUTTON_CAPACITY 2",
                 "#define CONFIGURATION_ENCODER_CAPACITY 0",
                 "#define CONFIGURATION_DEBUG_MODE 0",
+                "#define HID_MAX_KEY_STEPS 1",
                 string.Empty,
                 "#define PIN_NEO P34",
                 "#define NEO_COUNT 1",

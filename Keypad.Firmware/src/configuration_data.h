@@ -18,13 +18,15 @@ typedef enum
 {
     LED_PASSIVE_OFF = 0,
     LED_PASSIVE_RAINBOW = 1,
-    LED_PASSIVE_STATIC = 2
+    LED_PASSIVE_STATIC = 2,
+    LED_PASSIVE_BREATHING = 3
 } led_passive_mode_t;
 
 typedef enum
 {
     LED_ACTIVE_OFF = 0,
-    LED_ACTIVE_SOLID = 1
+    LED_ACTIVE_SOLID = 1,
+    LED_ACTIVE_NOTHING = 2
 } led_active_mode_t;
 
 typedef struct
@@ -34,6 +36,10 @@ typedef struct
     const led_active_mode_t *active_modes;
     const led_rgb_t *active_colors;
     uint8_t count;
+    uint8_t brightness_percent;
+    uint8_t rainbow_step_ms;
+    uint8_t breathing_min_percent;
+    uint8_t breathing_step_ms;
 } led_configuration_t;
 
 extern const led_configuration_t led_configuration;
@@ -67,7 +73,6 @@ bool *configuration_button_state_storage(void);
 
 size_t configuration_encoder_state_capacity(void);
 uint8_t *configuration_encoder_prev_storage(void);
-long *configuration_encoder_position_storage(void);
-long *configuration_encoder_reported_storage(void);
+int8_t *configuration_encoder_delta_storage(void);
 
 bool configuration_bootloader_requested(void);

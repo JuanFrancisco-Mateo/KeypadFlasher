@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
+
 type StatusTone = "info" | "success" | "warn" | "error";
 
 type StatusBannerProps = {
   tone: StatusTone;
   title: string;
-  body?: string;
+  body?: ReactNode;
 };
 
 export function StatusBanner({ tone, title, body }: StatusBannerProps) {

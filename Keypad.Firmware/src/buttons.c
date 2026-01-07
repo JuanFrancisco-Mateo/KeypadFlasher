@@ -1,10 +1,10 @@
 #include <Arduino.h>
+#include "../configuration.h"
 #include "hid.h"
 #include "util.h"
 #include "buttons.h"
 #include "configuration_data.h"
 #include "led.h"
-#include "../configuration.h"
 
 #if !CONFIGURATION_DEBUG_MODE
 

@@ -169,113 +169,32 @@ namespace Keypad.Flasher.Server.Configuration
                     PassiveModes: Array.Empty<PassiveLedMode>(),
                     PassiveColors: Array.Empty<LedColor>(),
                     ActiveModes: Array.Empty<ActiveLedMode>(),
-                    ActiveColors: Array.Empty<LedColor>());
+                    ActiveColors: Array.Empty<LedColor>(),
+                    BrightnessPercent: 0,
+                    RainbowStepMs: 0,
+                    BreathingMinPercent: 0,
+                    BreathingStepMs: 0);
             }
 
-            var passiveModes = new PassiveLedMode[ledCount];
-            if (input?.PassiveModes != null && input.PassiveModes.Count > 0)
-            {
-                if (input.PassiveModes.Count != ledCount)
-                {
-                    throw new InvalidOperationException($"Passive modes length {input.PassiveModes.Count} does not match LED count {ledCount}.");
-                }
-                for (var i = 0; i < ledCount; i++)
-                {
-                    passiveModes[i] = input.PassiveModes[i];
-                }
-            }
-            else
-            {
-                for (var i = 0; i < ledCount; i++)
-                {
-                    passiveModes[i] = PassiveLedMode.Rainbow;
-                }
-            }
+            var passiveModes = input?.PassiveModes?.ToArray() ?? Array.Empty<PassiveLedMode>();
+            var passiveColors = input?.PassiveColors?.ToArray() ?? Array.Empty<LedColor>();
+            var activeModes = input?.ActiveModes?.ToArray() ?? Array.Empty<ActiveLedMode>();
+            var activeColors = input?.ActiveColors?.ToArray() ?? Array.Empty<LedColor>();
 
-            var passiveColors = new LedColor[ledCount];
-            if (input?.PassiveColors != null && input.PassiveColors.Count > 0)
-            {
-                if (input.PassiveColors.Count != ledCount)
-                {
-                    throw new InvalidOperationException($"Passive colors length {input.PassiveColors.Count} does not match LED count {ledCount}.");
-                }
-                for (var i = 0; i < ledCount; i++)
-                {
-                    passiveColors[i] = input.PassiveColors[i];
-                }
-            }
-            else
-            {
-                var defaults = BuildDefaultPassiveColors(ledCount);
-                for (var i = 0; i < ledCount; i++)
-                {
-                    passiveColors[i] = defaults[i];
-                }
-            }
-
-            var activeModes = new ActiveLedMode[ledCount];
-            if (input?.ActiveModes != null && input.ActiveModes.Count > 0)
-            {
-                if (input.ActiveModes.Count != ledCount)
-                {
-                    throw new InvalidOperationException($"Active modes length {input.ActiveModes.Count} does not match LED count {ledCount}.");
-                }
-                for (var i = 0; i < ledCount; i++)
-                {
-                    activeModes[i] = input.ActiveModes[i];
-                }
-            }
-            else
-            {
-                for (var i = 0; i < ledCount; i++)
-                {
-                    activeModes[i] = ActiveLedMode.Solid;
-                }
-            }
-
-            var activeColors = new LedColor[ledCount];
-            if (input?.ActiveColors != null && input.ActiveColors.Count > 0)
-            {
-                if (input.ActiveColors.Count != ledCount)
-                {
-                    throw new InvalidOperationException($"Active colors length {input.ActiveColors.Count} does not match LED count {ledCount}.");
-                }
-                for (var i = 0; i < ledCount; i++)
-                {
-                    activeColors[i] = input.ActiveColors[i];
-                }
-            }
-            else
-            {
-                for (var i = 0; i < ledCount; i++)
-                {
-                    activeColors[i] = new LedColor(255, 255, 255);
-                }
-            }
+            var brightnessPercent = input?.BrightnessPercent ?? 0;
+            var rainbowStepMs = input?.RainbowStepMs ?? 0;
+            var breathingMinPercent = input?.BreathingMinPercent ?? 0;
+            var breathingStepMs = input?.BreathingStepMs ?? 0;
 
             return new LedConfiguration(
                 PassiveModes: passiveModes,
                 PassiveColors: passiveColors,
                 ActiveModes: activeModes,
-                ActiveColors: activeColors);
+                ActiveColors: activeColors,
+                BrightnessPercent: brightnessPercent,
+                RainbowStepMs: rainbowStepMs,
+                BreathingMinPercent: breathingMinPercent,
+                BreathingStepMs: breathingStepMs);
         }
-
-        private static LedColor[] BuildDefaultPassiveColors(int count)
-        {
-            var defaults = new LedColor[count];
-            var hues = new[]
-            {
-                new LedColor(255, 0, 0),
-                new LedColor(255, 255, 0),
-                new LedColor(0, 255, 0)
-            };
-
-            for (var i = 0; i < count; i++)
-            {
-                defaults[i] = hues[i % hues.Length];
-            }
-
-            return defaults;
-        }
-    }
+  }
 }

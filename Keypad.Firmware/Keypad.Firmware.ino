@@ -34,6 +34,7 @@ void setup()
   NEO_init();
   delay(10);
   NEO_clearAll();
+  led_init();
 #endif
 
   // Go in bootloader mode if the configured boot button is held during power-on
@@ -47,9 +48,6 @@ void setup()
 
   buttons_setup();
   encoder_setup();
-#if NEO_COUNT > 0
-  led_set_mode(LED_LOOP);
-#endif
   USBInit();
 #endif
 }

@@ -35,14 +35,16 @@ namespace Keypad.Flasher.Server.Configuration
     {
         Off,
         Rainbow,
-        Static
+        Static,
+        Breathing
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ActiveLedMode
     {
         Off,
-        Solid
+        Solid,
+        Nothing
     }
 
     public sealed record HidStep(
@@ -121,7 +123,11 @@ namespace Keypad.Flasher.Server.Configuration
         IReadOnlyList<PassiveLedMode> PassiveModes,
         IReadOnlyList<LedColor> PassiveColors,
         IReadOnlyList<ActiveLedMode> ActiveModes,
-        IReadOnlyList<LedColor> ActiveColors);
+        IReadOnlyList<LedColor> ActiveColors,
+        byte BrightnessPercent = 100,
+        byte RainbowStepMs = 20,
+        byte BreathingMinPercent = 20,
+        byte BreathingStepMs = 20);
 
     public sealed record ConfigurationDefinition(
         IReadOnlyList<ButtonBinding> Buttons,

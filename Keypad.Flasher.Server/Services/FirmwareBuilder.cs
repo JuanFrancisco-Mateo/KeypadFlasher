@@ -65,6 +65,7 @@ namespace Keypad.Flasher.Server.Services
                     args.ArgumentList.Add("--config-file");
                     args.ArgumentList.Add("arduino-cli.yaml");
                     args.ArgumentList.Add("--export-binaries");
+                    args.ArgumentList.Add("--no-color");
                     args.ArgumentList.Add("--output-dir");
                     args.ArgumentList.Add(outputPath);
 

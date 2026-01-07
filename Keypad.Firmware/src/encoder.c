@@ -5,9 +5,9 @@
 
 #include <Arduino.h>
 
+#include "../configuration.h"
 #include "hid.h"
 #include "configuration_data.h"
-#include "../configuration.h"
 
 #if !CONFIGURATION_DEBUG_MODE
 
@@ -19,8 +19,7 @@ static const int8_t rotary_table_s[16] = {
     0,  1, -1, 0};
 
 static uint8_t *encoder_prev_values_s = NULL;
-static long *encoder_position_s = NULL;
-static long *encoder_position_reported_s = NULL;
+static int8_t *encoder_delta_s = NULL;
 static size_t encoder_state_count_s = 0;
 static size_t encoder_state_capacity_s = 0;
 
@@ -32,14 +31,13 @@ static void encoder_sample(size_t index)
     uint8_t prev = encoder_prev_values_s[index];
     uint8_t combined = (uint8_t)((prev << 2) | new_val);
     encoder_prev_values_s[index] = new_val;
-    encoder_position_s[index] += rotary_table_s[combined];
+    encoder_delta_s[index] = (int8_t)(encoder_delta_s[index] + rotary_table_s[combined]);
 }
 
 void encoder_setup(void)
 {
     encoder_prev_values_s = configuration_encoder_prev_storage();
-    encoder_position_s = configuration_encoder_position_storage();
-    encoder_position_reported_s = configuration_encoder_reported_storage();
+    encoder_delta_s = configuration_encoder_delta_storage();
     encoder_state_capacity_s = configuration_encoder_state_capacity();
 
     if (encoder_binding_count == 0)
@@ -48,7 +46,7 @@ void encoder_setup(void)
         return;
     }
 
-    if (encoder_prev_values_s == NULL || encoder_position_s == NULL || encoder_position_reported_s == NULL || encoder_state_capacity_s == 0)
+    if (encoder_prev_values_s == NULL || encoder_delta_s == NULL || encoder_state_capacity_s == 0)
     {
         encoder_state_count_s = 0;
         return;
@@ -68,8 +66,7 @@ void encoder_setup(void)
         int valA = digitalRead(encoder_bindings[i].pin_a);
         int valB = digitalRead(encoder_bindings[i].pin_b);
         encoder_prev_values_s[i] = (uint8_t)((valA << 1) | valB);
-        encoder_position_s[i] = 0;
-        encoder_position_reported_s[i] = 0;
+        encoder_delta_s[i] = 0;
     }
 }
 
@@ -87,17 +84,21 @@ void encoder_update(void)
 
     for (size_t index = 0; index < encoder_state_count_s; ++index)
     {
-        while (encoder_position_s[index] - encoder_position_reported_s[index] >= 4)
+        int8_t delta = encoder_delta_s[index];
+
+        while (delta >= 4)
         {
-            encoder_position_reported_s[index] += 4;
+            delta -= 4;
             hid_handle_encoder(index, true);
         }
 
-        while (encoder_position_s[index] - encoder_position_reported_s[index] <= -4)
+        while (delta <= -4)
         {
-            encoder_position_reported_s[index] -= 4;
+            delta += 4;
             hid_handle_encoder(index, false);
         }
+
+        encoder_delta_s[index] = delta;
     }
 }
 

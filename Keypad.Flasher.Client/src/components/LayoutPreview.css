@@ -48,7 +48,7 @@
   padding-top: 48px;
   border-radius: 14px;
   border: 1px solid var(--border-color);
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.16)), var(--card-bg);
+  background: var(--encoder-bg);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -192,6 +192,62 @@
   padding-bottom: 12px;
 }
 
+.button-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.lighting-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lighting-preview-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 80ms ease;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: var(--shadow);
+}
+
+.lighting-preview.interactive {
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.lighting-preview.interactive:hover,
+.lighting-preview.interactive:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-strong);
+}
+
+.lighting-preview-label {
+  position: relative;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+  margin-bottom: 8px;
+}
+
 .button-grid .button-tile.clickable {
   cursor: auto;
 }
@@ -279,26 +335,70 @@
   font-size: 13px;
 }
 
-.button-tile.rainbow {
-  background-color: var(--card-bg);
-  background-image: linear-gradient(135deg,
-    rgba(255, 77, 79, 0.24),
-    rgba(255, 214, 102, 0.20),
-    rgba(115, 209, 61, 0.18),
-    rgba(64, 169, 255, 0.24),
-    rgba(255, 133, 192, 0.22),
-    rgba(255, 77, 79, 0.24)
-  );
-  background-size: 140% 140%;
-  animation: rainbow-sheen 13s ease infinite;
+.button-tile.rainbow,
+.lighting-preview-surface.passive.rainbow {
+  background: var(--card-bg);
   border-color: rgba(255, 255, 255, 0.22);
   box-shadow: var(--shadow);
 }
 
-@keyframes rainbow-sheen {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.button-tile.rainbow::before,
+.lighting-preview-surface.passive.rainbow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    rgba(255, 77, 79, var(--rainbow-alpha, 1)),
+    rgba(255, 77, 79, var(--rainbow-alpha, 1))
+  );
+  animation: rainbow-roll var(--rainbow-duration, 13s) steps(192) infinite;
+  animation-delay: var(--rainbow-delay, 0s);
+  mix-blend-mode: screen;
+  opacity: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.button-tile.breathing,
+.lighting-preview-surface.passive.breathing {
+  animation: breathing-shell var(--breathing-duration, 8s) ease-in-out infinite;
+}
+
+.button-tile.breathing::before,
+.lighting-preview-surface.passive.breathing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 1;
+  z-index: 0;
+  pointer-events: none;
+  will-change: filter, opacity;
+}
+
+@keyframes rainbow-roll {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(-360deg); }
+}
+
+@keyframes breathing-shell {
+  0% {
+    filter: brightness(var(--breathing-min, 0.2));
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 6px 16px rgba(0, 0, 0, 0.16);
+  }
+  50% {
+    filter: brightness(1);
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 14px 34px rgba(0, 0, 0, 0.32);
+  }
+  100% {
+    filter: brightness(var(--breathing-min, 0.2));
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 6px 16px rgba(0, 0, 0, 0.16);
+  }
 }
 
 .binding-text {

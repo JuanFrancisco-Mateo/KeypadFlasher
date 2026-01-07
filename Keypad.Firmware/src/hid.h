@@ -37,6 +37,10 @@ typedef enum
   HID_STEP_MOUSE,
 } hid_step_kind_t;
 
+#ifndef HID_MAX_KEY_STEPS
+#define HID_MAX_KEY_STEPS 16
+#endif
+
 typedef struct
 {
   hid_step_kind_t kind;
@@ -49,8 +53,6 @@ typedef struct
   hid_pointer_event_type_t pointer_type;
   uint8_t pointer_value;
 } hid_key_step_t;
-
-#define HID_MAX_KEY_STEPS 16
 
 typedef struct
 {

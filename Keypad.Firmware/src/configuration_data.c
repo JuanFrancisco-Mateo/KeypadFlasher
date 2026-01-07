@@ -16,12 +16,10 @@ bool *configuration_button_state_storage(void)
 
 #if CONFIGURATION_ENCODER_CAPACITY > 0
 static uint8_t encoder_prev_storage_s[CONFIGURATION_ENCODER_CAPACITY];
-static long encoder_position_storage_s[CONFIGURATION_ENCODER_CAPACITY];
-static long encoder_reported_storage_s[CONFIGURATION_ENCODER_CAPACITY];
+static int8_t encoder_delta_storage_s[CONFIGURATION_ENCODER_CAPACITY];
 #else
 static uint8_t encoder_prev_storage_s[1];
-static long encoder_position_storage_s[1];
-static long encoder_reported_storage_s[1];
+static int8_t encoder_delta_storage_s[1];
 #endif
 
 size_t configuration_encoder_state_capacity(void)
@@ -34,14 +32,9 @@ uint8_t *configuration_encoder_prev_storage(void)
     return encoder_prev_storage_s;
 }
 
-long *configuration_encoder_position_storage(void)
+int8_t *configuration_encoder_delta_storage(void)
 {
-    return encoder_position_storage_s;
-}
-
-long *configuration_encoder_reported_storage(void)
-{
-    return encoder_reported_storage_s;
+    return encoder_delta_storage_s;
 }
 
 bool configuration_bootloader_requested(void)

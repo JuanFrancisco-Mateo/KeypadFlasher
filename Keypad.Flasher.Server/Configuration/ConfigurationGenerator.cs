@@ -8,6 +8,7 @@ namespace Keypad.Flasher.Server.Configuration
         {
             var neoPixelCount = CalculateNeoPixelCount(configuration.Buttons);
             var neoPixelReversed = neoPixelCount > 0 && configuration.NeoPixelReversed;
+            var maxKeySteps = Math.Max(1, CalculateMaxKeySteps(configuration));
             var sb = new StringBuilder();
             sb.AppendLine("// This file is auto-generated. Do not edit manually.");
             sb.AppendLine();
@@ -18,6 +19,7 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine($"#define CONFIGURATION_BUTTON_CAPACITY {configuration.Buttons.Count}");
             sb.AppendLine($"#define CONFIGURATION_ENCODER_CAPACITY {configuration.Encoders.Count}");
             sb.AppendLine($"#define CONFIGURATION_DEBUG_MODE {ToCInteger(configuration.DebugMode)}");
+            sb.AppendLine($"#define HID_MAX_KEY_STEPS {maxKeySteps}");
             sb.AppendLine();
             if (neoPixelCount > 0)
             {
@@ -126,7 +128,11 @@ namespace Keypad.Flasher.Server.Configuration
                 AppendLine(sb, 1, ".passive_colors = 0,");
                 AppendLine(sb, 1, ".active_modes = 0,");
                 AppendLine(sb, 1, ".active_colors = 0,");
-                AppendLine(sb, 1, ".count = 0");
+                AppendLine(sb, 1, ".count = 0,");
+                AppendLine(sb, 1, ".brightness_percent = 0,");
+                AppendLine(sb, 1, ".rainbow_step_ms = 0,");
+                AppendLine(sb, 1, ".breathing_min_percent = 0,");
+                AppendLine(sb, 1, ".breathing_step_ms = 0");
                 AppendLine(sb, 0, "};");
                 return;
             }
@@ -170,8 +176,43 @@ namespace Keypad.Flasher.Server.Configuration
             AppendLine(sb, 1, ".passive_colors = led_passive_colors,");
             AppendLine(sb, 1, ".active_modes = led_active_modes,");
             AppendLine(sb, 1, ".active_colors = led_active_colors,");
-            AppendLine(sb, 1, $".count = {neoPixelCount}");
+            AppendLine(sb, 1, $".count = {neoPixelCount},");
+            AppendLine(sb, 1, $".brightness_percent = {led.BrightnessPercent},");
+            AppendLine(sb, 1, $".rainbow_step_ms = {led.RainbowStepMs},");
+            AppendLine(sb, 1, $".breathing_min_percent = {led.BreathingMinPercent},");
+            AppendLine(sb, 1, $".breathing_step_ms = {led.BreathingStepMs}");
             AppendLine(sb, 0, "};");
+        }
+
+        private static int CalculateMaxKeySteps(ConfigurationDefinition configuration)
+        {
+            int maxSteps = 0;
+
+            foreach (var button in configuration.Buttons)
+            {
+                if (button.Function is HidSequenceBinding sequence)
+                {
+                    if (sequence.Steps.Count > maxSteps)
+                    {
+                        maxSteps = sequence.Steps.Count;
+                    }
+                }
+            }
+
+            foreach (var encoder in configuration.Encoders)
+            {
+                if (encoder.Clockwise is HidSequenceBinding clockwise && clockwise.Steps.Count > maxSteps)
+                {
+                    maxSteps = clockwise.Steps.Count;
+                }
+
+                if (encoder.CounterClockwise is HidSequenceBinding counter && counter.Steps.Count > maxSteps)
+                {
+                    maxSteps = counter.Steps.Count;
+                }
+            }
+
+            return maxSteps;
         }
 
         private static int CalculateNeoPixelCount(IReadOnlyCollection<ButtonBinding> buttons)
@@ -194,6 +235,7 @@ namespace Keypad.Flasher.Server.Configuration
             PassiveLedMode.Off => "LED_PASSIVE_OFF",
             PassiveLedMode.Rainbow => "LED_PASSIVE_RAINBOW",
             PassiveLedMode.Static => "LED_PASSIVE_STATIC",
+            PassiveLedMode.Breathing => "LED_PASSIVE_BREATHING",
             _ => "LED_PASSIVE_RAINBOW"
         };
 
@@ -201,6 +243,7 @@ namespace Keypad.Flasher.Server.Configuration
         {
             ActiveLedMode.Off => "LED_ACTIVE_OFF",
             ActiveLedMode.Solid => "LED_ACTIVE_SOLID",
+            ActiveLedMode.Nothing => "LED_ACTIVE_NOTHING",
             _ => "LED_ACTIVE_SOLID"
         };
 
