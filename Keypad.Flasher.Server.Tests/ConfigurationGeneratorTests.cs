@@ -38,7 +38,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var expected = Lines(
                 "// This file is auto-generated. Do not edit manually.",
@@ -50,6 +51,10 @@ namespace Keypad.Flasher.Server.Tests
                 "#define CONFIGURATION_BUTTON_CAPACITY 2",
                 "#define CONFIGURATION_ENCODER_CAPACITY 0",
                 "#define CONFIGURATION_DEBUG_MODE 0",
+                "#define DEBUG_NOISE_FILTER_ENABLED 1",
+                "#define DEBUG_PULLUPS_ENABLED 1",
+                "#define DEBUG_CONFIRM_SAMPLES 3",
+                "#define DEBUG_CONFIRM_DELAY_MS 1",
                 "#define HID_MAX_KEY_STEPS 1",
                 string.Empty,
                 "#define PIN_NEO P34",
@@ -89,7 +94,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -116,7 +122,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 31,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -143,7 +150,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 31,
                 NeoPixelReversed: true,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -170,7 +178,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -190,7 +199,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: true,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateHeader(configuration);
 
@@ -222,7 +232,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: true,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var result = Generator.GenerateSource(configuration);
 
@@ -271,7 +282,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var expected = ReadExpected("generate_source_4_buttons.c");
 
@@ -307,7 +319,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: -1,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var expected = ReadExpected("generate_source_2_buttons.c");
 
@@ -399,7 +412,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: -1,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var expected = ReadExpected("generate_source_10_buttons.c");
 
@@ -458,7 +472,8 @@ namespace Keypad.Flasher.Server.Tests
                 DebugMode: false,
                 NeoPixelPin: 34,
                 NeoPixelReversed: false,
-                LedConfig: DefaultLedConfig(buttons));
+                LedConfig: DefaultLedConfig(buttons),
+                DebugOptions: DebugOptions.Default);
 
             var expected = ReadExpected("generate_source_3_buttons_1_encoder.c");
 

@@ -129,13 +129,23 @@ namespace Keypad.Flasher.Server.Configuration
         byte BreathingMinPercent = 20,
         byte BreathingStepMs = 20);
 
+    public sealed record DebugOptions(
+        bool EnableNoiseFilter = true,
+        bool EnablePullups = true,
+        byte ConfirmSamples = 3,
+        byte ConfirmDelayMs = 1)
+    {
+        public static readonly DebugOptions Default = new();
+    }
+
     public sealed record ConfigurationDefinition(
         IReadOnlyList<ButtonBinding> Buttons,
         IReadOnlyList<EncoderBinding> Encoders,
         bool DebugMode,
         int NeoPixelPin,
         bool NeoPixelReversed,
-        LedConfiguration LedConfig);
+        LedConfiguration LedConfig,
+        DebugOptions DebugOptions);
 
     // Hardware-only shape; no bindings attached so UI can present physical controls separately from actions
     public abstract record InputLayout(

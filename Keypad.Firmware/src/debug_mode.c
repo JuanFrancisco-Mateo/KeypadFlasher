@@ -18,6 +18,22 @@ typedef struct
 #define DEBUG_PIN_CAPACITY 40
 #define SUMMARY_INTERVAL_MS 1000UL
 
+#ifndef DEBUG_NOISE_FILTER_ENABLED
+#define DEBUG_NOISE_FILTER_ENABLED 1
+#endif
+
+#ifndef DEBUG_PULLUPS_ENABLED
+#define DEBUG_PULLUPS_ENABLED 1
+#endif
+
+#ifndef DEBUG_CONFIRM_SAMPLES
+#define DEBUG_CONFIRM_SAMPLES 3
+#endif
+
+#ifndef DEBUG_CONFIRM_DELAY_MS
+#define DEBUG_CONFIRM_DELAY_MS 1
+#endif
+
 static debug_pin_entry_t debug_pins_s[DEBUG_PIN_CAPACITY];
 static uint8_t debug_pin_count_s = 0;
 static uint8_t debug_pin_state_s[DEBUG_PIN_CAPACITY];
@@ -38,6 +54,7 @@ static void debug_mode_print_summary(void);
 static void debug_mode_format_label(uint8_t pin, char *buffer, size_t buffer_length);
 static uint8_t debug_mode_is_reserved_pin(uint8_t pin);
 static void debug_mode_print_timestamp_prefix(const char *tag);
+static uint8_t debug_mode_confirm_change(uint8_t pin, uint8_t previous_state);
 
 void debug_mode_setup(void)
 {
@@ -53,6 +70,7 @@ void debug_mode_setup(void)
     {
         uint8_t mode = debug_pins_s[i].use_pullup ? INPUT_PULLUP : INPUT;
         pinMode(debug_pins_s[i].pin, mode);
+        delay(1);
         debug_pin_state_s[i] = digitalRead(debug_pins_s[i].pin);
         debug_mode_print_pin_snapshot(i, 1);
     }
@@ -69,12 +87,20 @@ void debug_mode_loop(void)
 
     for (i = 0; i < debug_pin_count_s; ++i)
     {
-        uint8_t raw = digitalRead(debug_pins_s[i].pin);
+        uint8_t raw = (uint8_t)(digitalRead(debug_pins_s[i].pin) ? 1 : 0);
         if (raw != debug_pin_state_s[i])
         {
-            debug_pin_state_s[i] = raw;
-            debug_mode_print_pin_snapshot(i, 0);
-            changed = 1;
+            uint8_t confirmed = 1;
+#if DEBUG_NOISE_FILTER_ENABLED
+            confirmed = debug_mode_confirm_change(debug_pins_s[i].pin, debug_pin_state_s[i]);
+#endif
+
+            if (confirmed)
+            {
+                debug_pin_state_s[i] = (uint8_t)(digitalRead(debug_pins_s[i].pin) ? 1 : 0);
+                debug_mode_print_pin_snapshot(i, 0);
+                changed = 1;
+            }
         }
     }
 
@@ -124,7 +150,7 @@ static void debug_mode_collect_unassigned_pins(void)
 
     for (i = 0; i < count; ++i)
     {
-        debug_mode_add_pin(candidates[i], 0, 0, 0);
+        debug_mode_add_pin(candidates[i], DEBUG_PULLUPS_ENABLED ? 1 : 0, 0, 0);
     }
 }
 
@@ -276,6 +302,31 @@ static void debug_mode_print_timestamp_prefix(const char *tag)
     debug_serial_print_s(" ");
     debug_serial_print_i((long)millis());
     debug_serial_print_s("ms] ");
+}
+
+static uint8_t debug_mode_confirm_change(uint8_t pin, uint8_t previous_state)
+{
+#if DEBUG_NOISE_FILTER_ENABLED
+    const uint8_t samples = (DEBUG_CONFIRM_SAMPLES == 0U) ? 1U : DEBUG_CONFIRM_SAMPLES;
+    uint8_t confirmations = 0;
+    uint8_t i;
+
+    for (i = 0; i < samples; ++i)
+    {
+        uint8_t sample = (uint8_t)(digitalRead(pin) ? 1 : 0);
+        if (sample != previous_state)
+        {
+            ++confirmations;
+        }
+        delay(DEBUG_CONFIRM_DELAY_MS);
+    }
+
+    return (uint8_t)(confirmations > (samples / 2U));
+#else
+    (void)pin;
+    (void)previous_state;
+    return 1;
+#endif
 }
 
 static void debug_serial_print_c(char value)

@@ -32,6 +32,8 @@ namespace Keypad.Flasher.Server.Controllers
                     return BadRequest(new { error = "Debug mode must not include layout or bindingProfile." });
                 }
 
+                var debugOptions = request.DebugOptions ?? DebugOptions.Default;
+
                 var debugOnlyConfiguration = new ConfigurationDefinition(
                     Array.Empty<ButtonBinding>(),
                     Array.Empty<EncoderBinding>(),
@@ -42,7 +44,8 @@ namespace Keypad.Flasher.Server.Controllers
                         PassiveModes: Array.Empty<PassiveLedMode>(),
                         PassiveColors: Array.Empty<LedColor>(),
                         ActiveModes: Array.Empty<ActiveLedMode>(),
-                        ActiveColors: Array.Empty<LedColor>()));
+                        ActiveColors: Array.Empty<LedColor>()),
+                    DebugOptions: debugOptions);
 
                 var debugResult = _firmwareBuilder.BuildFirmware(debugOnlyConfiguration);
                 if (!debugResult.Success)
@@ -74,7 +77,7 @@ namespace Keypad.Flasher.Server.Controllers
                 return BadRequest(new { error = ex.Message });
             }
 
-            configuration = configuration with { DebugMode = request.Debug };
+            configuration = configuration with { DebugMode = request.Debug, DebugOptions = DebugOptions.Default };
 
             var buildResult = _firmwareBuilder.BuildFirmware(configuration);
             if (!buildResult.Success)
@@ -97,7 +100,8 @@ namespace Keypad.Flasher.Server.Controllers
             DeviceLayout? Layout,
             BindingProfile? BindingProfile,
             bool Debug = false,
-            LedConfiguration? LedConfig = null);
+            LedConfiguration? LedConfig = null,
+            DebugOptions? DebugOptions = null);
 
     }
 }

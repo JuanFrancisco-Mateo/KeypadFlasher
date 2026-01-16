@@ -32,6 +32,14 @@ type FirmwareRequestBody = {
   bindingProfile: BindingProfileDto | null;
   debug: boolean;
   ledConfig: LedConfigurationDto | null;
+  debugOptions: DebugOptionsDto | null;
+};
+
+type DebugOptionsDto = {
+  enableNoiseFilter: boolean;
+  enablePullups: boolean;
+  confirmSamples: number;
+  confirmDelayMs: number;
 };
 
 type StatusState =
@@ -401,6 +409,9 @@ export default function KeypadFlasherApp() {
   const [demoMode, setDemoMode] = useState<boolean>(false);
   const [devMode, setDevMode] = useState<boolean>(false);
   const [debugFirmware, setDebugFirmware] = useState<boolean>(false);
+  const defaultDebugOptions: DebugOptionsDto = { enableNoiseFilter: true, enablePullups: true, confirmSamples: 3, confirmDelayMs: 1 };
+  const classicDebugOptions: DebugOptionsDto = { enableNoiseFilter: false, enablePullups: false, confirmSamples: 1, confirmDelayMs: 0 };
+  const [debugOptions, setDebugOptions] = useState<DebugOptionsDto>(defaultDebugOptions);
   const [selectedProfile, setSelectedProfile] = useState<KnownDeviceProfile | null>(null);
   const [rememberedBootloaderId, setRememberedBootloaderId] = useState<number[] | null>(null);
   const [currentBindings, setCurrentBindings] = useState<BindingProfileDto | null>(null);
@@ -843,10 +854,16 @@ export default function KeypadFlasherApp() {
 
     try {
       setStatus({ state: "compiling", detail: debugFirmware ? "Debug firmware" : selectedProfile?.name });
-      const requestLedConfig = assertLedConfigMatchesLayout(selectedLayout, ledConfig);
-      const payload: FirmwareRequestBody = (!selectedLayout && debugFirmware)
-        ? { layout: null, bindingProfile: null, debug: true, ledConfig: null }
-        : { layout: selectedLayout, bindingProfile: currentBindings, debug: debugFirmware, ledConfig: requestLedConfig };
+      const requestLedConfig = debugFirmware ? null : assertLedConfigMatchesLayout(selectedLayout, ledConfig);
+      const sanitizedDebugOptions: DebugOptionsDto = {
+        enableNoiseFilter: debugOptions.enableNoiseFilter,
+        enablePullups: debugOptions.enablePullups,
+        confirmSamples: Math.max(1, Math.min(255, Math.round(debugOptions.confirmSamples))),
+        confirmDelayMs: Math.max(0, Math.min(255, Math.round(debugOptions.confirmDelayMs))),
+      };
+      const payload: FirmwareRequestBody = debugFirmware
+        ? { layout: null, bindingProfile: null, debug: true, ledConfig: null, debugOptions: sanitizedDebugOptions }
+        : { layout: selectedLayout, bindingProfile: currentBindings, debug: false, ledConfig: requestLedConfig, debugOptions: null };
 
       const resp = await fetch("flasher", {
         method: "POST",
@@ -884,7 +901,7 @@ export default function KeypadFlasherApp() {
     } catch (err) {
       setStatus({ state: "compileError", detail: String((err as Error).message ?? err) });
     }
-  }, [assertLedConfigMatchesLayout, flashBytes, debugFirmware, selectedLayout, selectedProfile, currentBindings, ledConfig]);
+  }, [assertLedConfigMatchesLayout, flashBytes, debugFirmware, debugOptions, selectedLayout, selectedProfile, currentBindings, ledConfig]);
 
   const unsupportedDevice = connectedInfo != null && selectedProfile == null;
   const userButtons = selectedLayout ? selectedLayout.buttons : [];
@@ -1424,7 +1441,63 @@ export default function KeypadFlasherApp() {
             <p className="muted small">
               Use debug firmware to expose a USB CDC serial console for troubleshooting layouts. See the <a className="link" href="https://github.com/AmyJeanes/KeypadFlasher#adding-support-for-new-keypads" target="_blank" rel="noreferrer">adding support guide</a> for wiring notes, LED direction tips, and how to contribute new keypad profiles.
             </p>
-            <div className="card subtle">
+            {debugFirmware && (
+              <div className="card subtle" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <div className="card-title" style={{ marginBottom: 0 }}>Debug firmware options</div>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button className="btn" onClick={() => setDebugOptions(classicDebugOptions)}>Raw (no filtering/pull-ups)</button>
+                    <button className="btn" onClick={() => setDebugOptions(defaultDebugOptions)}>Reset defaults</button>
+                  </div>
+                </div>
+                <div className="muted small">
+                  Tweak how the debug logger handles floating pins and noisy edges.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+                  <label className="checkbox" title="Majority-vote a few quick samples before logging a change to filter out glitches.">
+                    <input
+                      type="checkbox"
+                      checked={debugOptions.enableNoiseFilter}
+                      onChange={(e) => setDebugOptions((prev) => ({ ...prev, enableNoiseFilter: e.target.checked }))}
+                    />
+                    Enable noise filter
+                  </label>
+                  <label className="checkbox" title="Use INPUT_PULLUP on unassigned pins to bias floating lines high.">
+                    <input
+                      type="checkbox"
+                      checked={debugOptions.enablePullups}
+                      onChange={(e) => setDebugOptions((prev) => ({ ...prev, enablePullups: e.target.checked }))}
+                    />
+                    Pull-ups on unassigned pins
+                  </label>
+                  <label className="inline-input">
+                    <span className="input-label" title="How many quick samples to take when a pin flips before logging it.">Confirm samples</span>
+                    <input
+                      id="debug-confirm-samples"
+                      className="text-input"
+                      type="number"
+                      min={1}
+                      max={255}
+                      value={debugOptions.confirmSamples}
+                      onChange={(e) => setDebugOptions((prev) => ({ ...prev, confirmSamples: Number(e.target.value) || 1 }))}
+                    />
+                  </label>
+                  <label className="inline-input">
+                    <span className="input-label" title="Delay in milliseconds between confirmation samples when the filter is on.">Confirm delay (ms)</span>
+                    <input
+                      id="debug-confirm-delay"
+                      className="text-input"
+                      type="number"
+                      min={0}
+                      max={255}
+                      value={debugOptions.confirmDelayMs}
+                      onChange={(e) => setDebugOptions((prev) => ({ ...prev, confirmDelayMs: Math.max(0, Number(e.target.value) || 0) }))}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+            <div className="card subtle" style={{ marginTop: "12px" }}>
               <div className="card-title">Connected device</div>
               <div>Bootloader: {connectedInfo ? connectedInfo.version : "n/a"}</div>
               <div>Bootloader ID: {connectedInfo ? connectedInfo.id.join(", ") : "n/a"}</div>

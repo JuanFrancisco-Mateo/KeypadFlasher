@@ -19,6 +19,10 @@ namespace Keypad.Flasher.Server.Configuration
             sb.AppendLine($"#define CONFIGURATION_BUTTON_CAPACITY {configuration.Buttons.Count}");
             sb.AppendLine($"#define CONFIGURATION_ENCODER_CAPACITY {configuration.Encoders.Count}");
             sb.AppendLine($"#define CONFIGURATION_DEBUG_MODE {ToCInteger(configuration.DebugMode)}");
+            sb.AppendLine($"#define DEBUG_NOISE_FILTER_ENABLED {ToCInteger(configuration.DebugOptions.EnableNoiseFilter)}");
+            sb.AppendLine($"#define DEBUG_PULLUPS_ENABLED {ToCInteger(configuration.DebugOptions.EnablePullups)}");
+            sb.AppendLine($"#define DEBUG_CONFIRM_SAMPLES {configuration.DebugOptions.ConfirmSamples}");
+            sb.AppendLine($"#define DEBUG_CONFIRM_DELAY_MS {configuration.DebugOptions.ConfirmDelayMs}");
             sb.AppendLine($"#define HID_MAX_KEY_STEPS {maxKeySteps}");
             sb.AppendLine();
             if (neoPixelCount > 0)

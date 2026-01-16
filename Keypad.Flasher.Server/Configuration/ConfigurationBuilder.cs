@@ -27,7 +27,8 @@ namespace Keypad.Flasher.Server.Configuration
                 DebugMode: debugMode,
                 NeoPixelPin: layout.NeoPixelPin,
                 NeoPixelReversed: layout.NeoPixelReversed,
-                LedConfig: ledConfiguration);
+                LedConfig: ledConfiguration,
+                DebugOptions: DebugOptions.Default);
         }
 
         private static List<ButtonBinding> BuildButtons(
