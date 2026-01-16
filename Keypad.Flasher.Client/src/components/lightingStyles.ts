@@ -23,6 +23,17 @@ type PassiveLightingStyleInput = {
   muted?: boolean;
 };
 
+type RainbowStyle = CSSProperties & {
+  "--rainbow-duration"?: string;
+  "--rainbow-delay"?: string;
+  "--rainbow-alpha"?: string;
+};
+
+type BreathingStyle = CSSProperties & {
+  "--breathing-duration"?: string;
+  "--breathing-min"?: string;
+};
+
 export const getPassiveLightingStyle = (input: PassiveLightingStyleInput): { className?: string; style?: CSSProperties } => {
   const {
     passiveMode,
@@ -40,7 +51,7 @@ export const getPassiveLightingStyle = (input: PassiveLightingStyleInput): { cla
     const hueOffsetSteps = (ledIndex * 8) % 192; // firmware: per-LED hue offset = led * 8 (mod 192)
     const delaySec = -(hueOffsetSteps * step) / 1000; // align phase offset in time
     const rainbowAlpha = (muted ? MUTED_ALPHA_SCALE : 1) * BASE_RAINBOW_ALPHA;
-    const rainbowStyle: CSSProperties = {
+    const rainbowStyle: RainbowStyle = {
       "--rainbow-duration": `${durationSec}s`,
       "--rainbow-delay": `${delaySec}s`,
       "--rainbow-alpha": `${rainbowAlpha}`,
@@ -58,7 +69,7 @@ export const getPassiveLightingStyle = (input: PassiveLightingStyleInput): { cla
     const primaryAlpha = BASE_PRIMARY_ALPHA * alphaScale;
     const secondaryAlpha = BASE_SECONDARY_ALPHA * alphaScale;
     const borderAlpha = BASE_BORDER_ALPHA * alphaScale;
-    const breathingStyle: CSSProperties | undefined = passiveMode === "Breathing"
+    const breathingStyle: BreathingStyle | undefined = passiveMode === "Breathing"
       ? {
         "--breathing-duration": `${durationSec}s`,
         "--breathing-min": `${Math.max(0.05, Math.min(0.95, minPercent / 100))}`,
