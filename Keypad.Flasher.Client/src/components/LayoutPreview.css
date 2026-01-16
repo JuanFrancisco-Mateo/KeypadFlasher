@@ -423,6 +423,13 @@
   pointer-events: auto;
 }
 
+.button-tile:hover .hover-actions .button-action:disabled,
+.button-tile:focus-within .hover-actions .button-action:disabled,
+.encoder-binding-tile:hover .hover-actions .button-action:disabled,
+.encoder-binding-tile:focus-within .hover-actions .button-action:disabled {
+  pointer-events: none;
+}
+
 .button-action {
   flex: 1;
   padding: 8px 0;
