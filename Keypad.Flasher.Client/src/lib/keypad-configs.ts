@@ -60,7 +60,7 @@ export type BindingProfileDto = {
   encoders: { id: number; clockwise: HidBindingDto; counterClockwise: HidBindingDto; press?: HidBindingDto }[];
 };
 
-export type KnownDeviceProfile = { name: string; layout: DeviceLayoutDto; defaultBindings: BindingProfileDto };
+export type KnownDeviceProfile = { name: string; layout: DeviceLayoutDto; defaultBindings: BindingProfileDto; hideFromDemo?: boolean };
 
 const key = (ch: string, modifiers = 0): HidStepDto => ({ kind: "Key", keycode: ch.charCodeAt(0), modifiers, holdMs: 10, gapMs: 10 });
 const fnStep = (fn: string, gapMs = 0): HidStepDto => ({ kind: "Function", functionPointer: fn, gapMs });
@@ -171,6 +171,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
   },
   "165-238-32-190": {
     name: "Sikai 6 Keys 1 Knob",
+    hideFromDemo: true,
     layout: {
       buttons: [
         { id: 0, pin: 11, activeLow: true, ledIndex: 0, bootloaderOnBoot: false, bootloaderChordMember: true },
