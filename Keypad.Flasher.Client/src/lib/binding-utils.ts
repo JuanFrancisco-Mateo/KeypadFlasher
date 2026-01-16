@@ -15,12 +15,82 @@ export const FUNCTIONS_WITH_VALUE = new Set(["hid_consumer_volume_up", "hid_cons
 
 export const DEFAULT_FUNCTION_POINTER = Object.keys(FRIENDLY_FUNCTIONS)[0] ?? "";
 
+const isMacLike = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform || "");
+const metaLabel = isMacLike ? "Cmd" : "Win";
+
 export const MODIFIER_BITS = [
   { bit: 1, label: "Ctrl" },
   { bit: 2, label: "Shift" },
   { bit: 4, label: "Alt" },
-  { bit: 8, label: "Win" },
+  { bit: 8, label: metaLabel },
 ];
+
+const CODE_TO_KEYCODE: Record<string, number> = {
+  KeyA: "a".charCodeAt(0),
+  KeyB: "b".charCodeAt(0),
+  KeyC: "c".charCodeAt(0),
+  KeyD: "d".charCodeAt(0),
+  KeyE: "e".charCodeAt(0),
+  KeyF: "f".charCodeAt(0),
+  KeyG: "g".charCodeAt(0),
+  KeyH: "h".charCodeAt(0),
+  KeyI: "i".charCodeAt(0),
+  KeyJ: "j".charCodeAt(0),
+  KeyK: "k".charCodeAt(0),
+  KeyL: "l".charCodeAt(0),
+  KeyM: "m".charCodeAt(0),
+  KeyN: "n".charCodeAt(0),
+  KeyO: "o".charCodeAt(0),
+  KeyP: "p".charCodeAt(0),
+  KeyQ: "q".charCodeAt(0),
+  KeyR: "r".charCodeAt(0),
+  KeyS: "s".charCodeAt(0),
+  KeyT: "t".charCodeAt(0),
+  KeyU: "u".charCodeAt(0),
+  KeyV: "v".charCodeAt(0),
+  KeyW: "w".charCodeAt(0),
+  KeyX: "x".charCodeAt(0),
+  KeyY: "y".charCodeAt(0),
+  KeyZ: "z".charCodeAt(0),
+  Digit1: "1".charCodeAt(0),
+  Digit2: "2".charCodeAt(0),
+  Digit3: "3".charCodeAt(0),
+  Digit4: "4".charCodeAt(0),
+  Digit5: "5".charCodeAt(0),
+  Digit6: "6".charCodeAt(0),
+  Digit7: "7".charCodeAt(0),
+  Digit8: "8".charCodeAt(0),
+  Digit9: "9".charCodeAt(0),
+  Digit0: "0".charCodeAt(0),
+  Minus: "-".charCodeAt(0),
+  Equal: "=".charCodeAt(0),
+  BracketLeft: "[".charCodeAt(0),
+  BracketRight: "]".charCodeAt(0),
+  Backslash: "\\".charCodeAt(0),
+  Semicolon: ";".charCodeAt(0),
+  Quote: "'".charCodeAt(0),
+  Backquote: "`".charCodeAt(0),
+  Comma: ",".charCodeAt(0),
+  Period: ".".charCodeAt(0),
+  Slash: "/".charCodeAt(0),
+  Space: " ".charCodeAt(0),
+  Enter: 0xb0,
+  NumpadEnter: 0xb0,
+  Tab: 0xb3,
+  Backspace: 0xb2,
+  Escape: 0xb1,
+  Delete: 0xd4,
+  Insert: 0xd1,
+  Home: 0xd2,
+  End: 0xd5,
+  PageUp: 0xd3,
+  PageDown: 0xd6,
+  ArrowUp: 0xda,
+  ArrowDown: 0xd9,
+  ArrowLeft: 0xd8,
+  ArrowRight: 0xd7,
+  CapsLock: 0xc1,
+};
 
 type KeyOption = { value: number; label: string };
 type KeyOptionGroup = { label: string; options: KeyOption[] };
@@ -81,35 +151,6 @@ KEY_OPTION_GROUPS.forEach((group) => group.options.forEach((opt) => {
   }
 }));
 
-const KEY_EVENT_CODES: Record<string, number> = (() => {
-  const base: Record<string, number> = {
-    Backspace: 0xb2,
-    Tab: 0xb3,
-    Enter: 0xb0,
-    NumpadEnter: 0xb0,
-    Escape: 0xb1,
-    Delete: 0xd4,
-    Del: 0xd4,
-    Insert: 0xd1,
-    Home: 0xd2,
-    End: 0xd5,
-    PageUp: 0xd3,
-    PageDown: 0xd6,
-    ArrowUp: 0xda,
-    ArrowDown: 0xd9,
-    ArrowLeft: 0xd8,
-    ArrowRight: 0xd7,
-    CapsLock: 0xc1,
-  };
-  for (let i = 1; i <= 12; i += 1) {
-    base[`F${i}`] = 0xc1 + i;
-  }
-  for (let i = 13; i <= 24; i += 1) {
-    base[`F${i}`] = 0xf0 + (i - 13);
-  }
-  return base;
-})();
-
 export const keyLabelFromCode = (code: number): string => {
   if (!code) return "";
   const opt = KEY_OPTION_LOOKUP.get(code);
@@ -118,12 +159,22 @@ export const keyLabelFromCode = (code: number): string => {
   return `Key ${code}`;
 };
 
-export const keyboardEventToKeycode = (event: KeyboardEvent): number | null => {
-  const mapped = KEY_EVENT_CODES[event.key] ?? KEY_EVENT_CODES[event.code];
-  if (mapped != null) return mapped;
-  if (!event.key) return null;
-  if (event.key.length !== 1) return null;
-  return event.key.toLowerCase().charCodeAt(0);
+export const captureKeyboardEventToKey = (event: KeyboardEvent): { keycode: number; modifiers: number } | null => {
+  const codeKey = CODE_TO_KEYCODE[event.code];
+  if (codeKey == null) return null;
+
+  const altGraph = typeof event.getModifierState === "function" && event.getModifierState("AltGraph");
+  const ctrl = Boolean(event.ctrlKey || altGraph);
+  const shift = Boolean(event.shiftKey);
+  const alt = Boolean(event.altKey || altGraph);
+  const meta = Boolean(event.metaKey);
+
+  let modifiers = 0;
+  if (ctrl) modifiers |= 1;
+  if (shift) modifiers |= 2;
+  if (alt) modifiers |= 4;
+  if (meta) modifiers |= 8;
+  return { keycode: codeKey, modifiers };
 };
 
 export const describeStep = (step: HidStepDto): string => {

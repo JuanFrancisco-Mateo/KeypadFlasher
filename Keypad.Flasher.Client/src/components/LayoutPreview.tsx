@@ -175,7 +175,7 @@ export function LayoutPreview({ layout, layoutRows, buttonBindings, encoderBindi
         </span>
       </div>
       {(warnNoBootEntry || warnSingleChord) && (
-        <div className="status-banner status-warn" style={{ marginTop: "0.5rem" }}>
+        <div className={`status-banner ${warnNoBootEntry ? "status-error" : "status-warn"}`} style={{ marginTop: "0.5rem" }}>
           <div className="status-title">Bootloader warning</div>
           <div className="status-body">
             {warnNoBootEntry && <div>No bootloader entry method configured. Enable key(s) on power up or add a chord so you can re-enter bootloader.</div>}

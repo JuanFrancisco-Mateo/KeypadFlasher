@@ -216,6 +216,13 @@
   gap: 6px;
 }
 
+.step-body .checkbox:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 63, 133, 255), 0.35);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb, 63, 133, 255), 0.12), rgba(var(--accent-rgb, 63, 133, 255), 0.18));
+  color: var(--text-color);
+}
+
 .timing-row {
   display: flex;
   gap: 10px;

@@ -42,7 +42,7 @@
 
 .encoder-tile {
   width: var(--tile-size);
-  height: calc(2 * var(--tile-size) + var(--tile-gap) + 4 * var(--row-padding));
+  height: calc(2 * var(--tile-size) + var(--tile-gap) + 4 * var(--row-padding) - 2px);
   overflow: hidden;
   padding: 12px;
   padding-top: 48px;
@@ -421,6 +421,13 @@
 .encoder-binding-tile:hover .hover-actions .button-action,
 .encoder-binding-tile:focus-within .hover-actions .button-action {
   pointer-events: auto;
+}
+
+.button-tile:hover .hover-actions .button-action:disabled,
+.button-tile:focus-within .hover-actions .button-action:disabled,
+.encoder-binding-tile:hover .hover-actions .button-action:disabled,
+.encoder-binding-tile:focus-within .hover-actions .button-action:disabled {
+  pointer-events: none;
 }
 
 .button-action {

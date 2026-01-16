@@ -5,8 +5,7 @@ This project contains custom firmware compatible with a number of different CH55
 ## TODO
 
 This project is work in progress, what's left to do:
-- Build the adapter to easily enter bootloader mode without opening the device up or making the contraption manually
-- Remove use of `any` in TypeScript code
+- Build an adapter to easily enter bootloader mode without opening the device up or making the contraption manually
 
 ## Usage
 

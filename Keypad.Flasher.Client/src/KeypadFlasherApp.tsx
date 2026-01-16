@@ -52,6 +52,13 @@ type StatusState =
 
 type Status = { state: StatusState; detail?: string };
 
+type Toast = { message: string; tone: "info" | "success" | "warn" | "error" };
+
+type BootloaderConfig = {
+  buttons: { id: number; bootloaderOnBoot: boolean; bootloaderChordMember: boolean }[];
+  encoders: { id: number; press?: { bootloaderOnBoot: boolean; bootloaderChordMember: boolean } }[];
+};
+
 const unsupportedDevicesUrl = "https://github.com/AmyJeanes/KeypadFlasher#supported-devices";
 
 function validateFixedRows(rows: number[], buttonCount: number): { rows: number[]; error: string | null } {
@@ -83,6 +90,39 @@ const toSequenceBinding = (value: unknown, label: string): HidBindingDto => {
 const requireNumber = (value: unknown, label: string): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   throw new Error(`${label} must be a number.`);
+};
+
+const requireBoolean = (value: unknown, label: string): boolean => {
+  if (typeof value === "boolean") return value;
+  throw new Error(`${label} must be a boolean.`);
+};
+
+const validateBootloaderConfigCandidate = (raw: unknown): BootloaderConfig => {
+  if (!raw || typeof raw !== "object") throw new Error("Bootloader config must be an object.");
+  const candidate = raw as { buttons?: unknown; encoders?: unknown };
+  if (!Array.isArray(candidate.buttons)) throw new Error("Bootloader config missing buttons array.");
+  if (!Array.isArray(candidate.encoders)) throw new Error("Bootloader config missing encoders array.");
+  const buttons = candidate.buttons.map((b) => {
+    if (!b || typeof b !== "object") throw new Error("Bootloader button invalid.");
+    const { id, bootloaderOnBoot, bootloaderChordMember } = b as { id?: unknown; bootloaderOnBoot?: unknown; bootloaderChordMember?: unknown };
+    return {
+      id: requireNumber(id, "Bootloader button id"),
+      bootloaderOnBoot: requireBoolean(bootloaderOnBoot, "Bootloader button bootloaderOnBoot"),
+      bootloaderChordMember: requireBoolean(bootloaderChordMember, "Bootloader button bootloaderChordMember"),
+    };
+  });
+  const encoders = candidate.encoders.map((e) => {
+    if (!e || typeof e !== "object") throw new Error("Bootloader encoder invalid.");
+    const { id, press } = e as { id?: unknown; press?: unknown };
+    const validatedPress = press != null
+      ? {
+          bootloaderOnBoot: requireBoolean((press as { bootloaderOnBoot?: unknown }).bootloaderOnBoot, "Bootloader encoder press bootloaderOnBoot"),
+          bootloaderChordMember: requireBoolean((press as { bootloaderChordMember?: unknown }).bootloaderChordMember, "Bootloader encoder press bootloaderChordMember"),
+        }
+      : undefined;
+    return { id: requireNumber(id, "Bootloader encoder id"), press: validatedPress };
+  });
+  return { buttons, encoders };
 };
 
 const validateBindingProfileCandidate = (raw: unknown): BindingProfileDto => {
@@ -161,6 +201,29 @@ const validateLedConfigCandidate = (raw: unknown): LedConfigurationDto => {
     rainbowStepMs: requireNumber(rawConfig.rainbowStepMs, "LED rainbowStepMs"),
     breathingMinPercent: requireNumber(rawConfig.breathingMinPercent, "LED breathingMinPercent"),
     breathingStepMs: requireNumber(rawConfig.breathingStepMs, "LED breathingStepMs"),
+  };
+};
+
+const bootloaderConfigFromLayout = (layout: DeviceLayoutDto): BootloaderConfig => ({
+  buttons: layout.buttons.map((b) => ({ id: b.id, bootloaderOnBoot: b.bootloaderOnBoot, bootloaderChordMember: b.bootloaderChordMember })),
+  encoders: layout.encoders.map((e) => ({ id: e.id, press: e.press ? { bootloaderOnBoot: e.press.bootloaderOnBoot, bootloaderChordMember: e.press.bootloaderChordMember } : undefined })),
+});
+
+const applyBootloaderConfigToLayout = (layout: DeviceLayoutDto, config: BootloaderConfig): DeviceLayoutDto => {
+  const buttonMap = new Map(config.buttons.map((b) => [b.id, b] as const));
+  const encoderMap = new Map(config.encoders.map((e) => [e.id, e] as const));
+  return {
+    ...layout,
+    buttons: layout.buttons.map((b) => {
+      const cfg = buttonMap.get(b.id);
+      return cfg ? { ...b, bootloaderOnBoot: cfg.bootloaderOnBoot, bootloaderChordMember: cfg.bootloaderChordMember } : b;
+    }),
+    encoders: layout.encoders.map((e) => {
+      const cfg = encoderMap.get(e.id);
+      if (!cfg || !e.press) return e;
+      if (!cfg.press) return { ...e, press: { ...e.press, bootloaderOnBoot: false, bootloaderChordMember: false } };
+      return { ...e, press: { ...e.press, bootloaderOnBoot: cfg.press.bootloaderOnBoot, bootloaderChordMember: cfg.press.bootloaderChordMember } };
+    }),
   };
 };
 
@@ -361,8 +424,16 @@ export default function KeypadFlasherApp() {
   const [showDemoModal, setShowDemoModal] = useState<boolean>(false);
   const [lastDemoKey, setLastDemoKey] = useState<string | null>(() => loadLastDemoKey());
   const [selectedDemoKey, setSelectedDemoKey] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const defaultLightingStatus = "Copy a key's lighting to paste or apply to all.";
   const modalPointerDownRef = useRef<boolean>(false);
+  const toastTimerRef = useRef<number | null>(null);
+
+  const showToast = useCallback((message: string, tone: Toast["tone"] = "info", durationMs = 3200) => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    setToast({ message, tone });
+    toastTimerRef.current = window.setTimeout(() => setToast(null), durationMs);
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const importTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -441,6 +512,7 @@ export default function KeypadFlasherApp() {
 
   useEffect(() => () => {
     clientRef.current?.disconnect().catch(() => {});
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -920,6 +992,10 @@ export default function KeypadFlasherApp() {
       setStatus({ state: "error", detail: "Nothing to export yet. Connect a device and load bindings first." });
       return;
     }
+    if (!selectedLayout) {
+      setStatus({ state: "error", detail: "Layout not ready yet. Connect a device before exporting." });
+      return;
+    }
     const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
     if (!targetId) {
       setStatus({ state: "error", detail: "Connect a device before exporting." });
@@ -927,11 +1003,12 @@ export default function KeypadFlasherApp() {
     }
     try {
       const payload = {
-        version: 3,
+        version: 1,
         deviceId: targetId,
         profile: selectedProfile?.name ?? null,
         exportedAt: new Date().toISOString(),
         bindings: currentBindings,
+        bootloaderConfig: bootloaderConfigFromLayout(selectedLayout),
         ledConfig: assertLedConfigMatchesLayout(selectedLayout, ledConfig),
       };
       const text = JSON.stringify(payload, null, 2);
@@ -951,13 +1028,16 @@ export default function KeypadFlasherApp() {
         setExportCopyStatus("Copied to clipboard.");
         setExportCopyFlash(true);
         window.setTimeout(() => setExportCopyFlash(false), 220);
+        showToast("Export copied", "success", 2600);
         return;
       }
       setExportCopyStatus("Clipboard not available. Copy manually.");
+      showToast("Clipboard not available. Copy manually.", "warn", 3200);
     } catch (err) {
       setExportCopyStatus(`Copy failed: ${String((err as Error).message ?? err)}`);
+      showToast("Copy failed", "error", 3200);
     }
-  }, [exportText]);
+  }, [exportText, showToast]);
 
   const openImportModal = useCallback(() => {
     setImportText("");
@@ -979,9 +1059,11 @@ export default function KeypadFlasherApp() {
       version?: unknown;
       deviceId?: unknown;
       bindings?: unknown;
+      bootloaderConfig?: unknown;
       ledConfig?: unknown;
     };
-    if (parsedConfig.version !== 3) {
+    const version = parsedConfig.version ?? 1;
+    if (version !== 1) {
       throw new Error("Unsupported configuration format.");
     }
     const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
@@ -995,27 +1077,35 @@ export default function KeypadFlasherApp() {
     }
     const bindings = parsedConfig.bindings ? validateBindingProfileCandidate(parsedConfig.bindings) : null;
     if (!bindings) throw new Error("Import is missing bindings.");
+    const baseLayout = selectedLayout ? cloneLayout(selectedLayout) : null;
+    if (!baseLayout) throw new Error("Layout not loaded for this device. Connect again and retry import.");
+
+    const bootCfg = parsedConfig.bootloaderConfig ? validateBootloaderConfigCandidate(parsedConfig.bootloaderConfig) : null;
+    if (!bootCfg) throw new Error("Import missing bootloader configuration.");
+    const layoutWithBootloader = applyBootloaderConfigToLayout(baseLayout, bootCfg);
+
     const ledCfg = parsedConfig.ledConfig ? validateLedConfigCandidate(parsedConfig.ledConfig) : null;
-    const validatedLed = assertLedConfigMatchesLayout(selectedLayout, ledCfg);
-    return { bindings, ledConfig: validatedLed };
+    const validatedLed = assertLedConfigMatchesLayout(layoutWithBootloader, ledCfg);
+    return { bindings, ledConfig: validatedLed, layout: layoutWithBootloader };
   }, [assertLedConfigMatchesLayout, connectedInfo, rememberedBootloaderId, selectedLayout]);
 
   const applyImportedConfig = useCallback((text: string) => {
     try {
       const next = parseImportedConfig(text);
+      setSelectedLayout(next.layout);
       setCurrentBindings(next.bindings);
       setLedConfig(next.ledConfig);
       const targetId = connectedInfo?.id ?? rememberedBootloaderId ?? lastBootloaderIdRef.current;
       if (targetId) {
-        saveStoredConfig(targetId, { bindings: next.bindings, layout: selectedLayout, ledConfig: next.ledConfig });
+        saveStoredConfig(targetId, { bindings: next.bindings, layout: next.layout, ledConfig: next.ledConfig });
       }
       setShowImportModal(false);
       setImportError("");
-      setStatus({ state: "connectedKnown", detail: "Configuration imported." });
+      showToast("Configuration imported", "success", 20000);
     } catch (err) {
       setImportError(String((err as Error).message ?? err));
     }
-  }, [parseImportedConfig, connectedInfo, rememberedBootloaderId, selectedLayout]);
+  }, [parseImportedConfig, connectedInfo, rememberedBootloaderId, selectedLayout, showToast]);
 
   const closeGlobalLightingModal = () => {
     setShowGlobalLightingModal(false);
@@ -1206,6 +1296,7 @@ export default function KeypadFlasherApp() {
     if (connectedInfo) {
       saveStoredConfig(connectedInfo.id, { bindings: nextBindings, layout: nextLayout, ledConfig: nextLedConfig ?? null });
     }
+    showToast("Reset to defaults", "success", 2600);
   };
 
   const baseRows = selectedLayout
@@ -1267,6 +1358,13 @@ export default function KeypadFlasherApp() {
 
   return (
     <div className="app-shell">
+      {toast && (
+        <div className="toast-container" role="status" aria-live="polite">
+          <div className={`toast toast-${toast.tone}`}>
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
       <div className="container">
         <header>
           <h1 className="title">Keypad Flasher</h1>
