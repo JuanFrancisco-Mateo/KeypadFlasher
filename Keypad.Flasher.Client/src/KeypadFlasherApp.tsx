@@ -515,6 +515,7 @@ export default function KeypadFlasherApp() {
   const defaultDemoKey = "144-165-233-190"; // 6 Keys 1 Knob
 
   const demoOptions = useMemo(() => Object.entries(DEVICE_PROFILES)
+    .filter(([, profile]) => !profile.hideFromDemo)
     .map(([key, profile]) => ({
       key,
       name: profile.name,
