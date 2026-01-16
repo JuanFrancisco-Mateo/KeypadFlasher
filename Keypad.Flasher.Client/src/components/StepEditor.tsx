@@ -10,8 +10,8 @@ import {
   MODIFIER_BITS,
   defaultMouseValue,
   describeStep,
+  captureKeyboardEventToKey,
   keyLabelFromCode,
-  keyboardEventToKeycode,
   normalizeIncomingStep,
 } from "../lib/binding-utils";
 import type { EditTarget } from "../types";
@@ -141,13 +141,21 @@ export function StepEditor({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const code = keyboardEventToKeycode(event);
-      if (code == null) return;
       event.preventDefault();
+      const pureModifier = event.code === "ShiftLeft" || event.code === "ShiftRight" || event.code === "ControlLeft" || event.code === "ControlRight" || event.code === "AltLeft" || event.code === "AltRight" || event.code === "MetaLeft" || event.code === "MetaRight";
+      if (pureModifier) return; // keep waiting for an actual key while modifiers are held
+      const captured = captureKeyboardEventToKey(event);
+      if (!captured) {
+        setLocalError("Could not capture that key. Pick it from the list or try a different key.");
+        setCapturingStepIndex(null);
+        input?.blur();
+        return;
+      }
       setEditSteps((prev) => prev.map((s, i) => {
         if (i !== capturingStepIndex) return s;
         if (s.kind !== "Key") return s;
-        return cloneStepWithId(s, { ...s, keycode: code });
+        const nextStep: HidStepDto = { ...s, keycode: captured.keycode, modifiers: captured.modifiers };
+        return cloneStepWithId(s, nextStep);
       }));
       setCapturingStepIndex(null);
       input?.blur();
@@ -584,6 +592,12 @@ export function StepEditor({
       return { kind: "Key", keycode, modifiers: step.modifiers, holdMs, gapMs };
     });
 
+    const invalidKey = mergedSteps.find((s) => s.kind === "Key" && !KEY_OPTION_LOOKUP.has(s.keycode));
+    if (invalidKey) {
+      setLocalError("One or more keys are not valid HID keys. Pick from the list or recapture.");
+      return;
+    }
+
     if (mergedSteps.some((s) => s.kind === "Function" && !s.functionPointer)) {
       setLocalError("Select a function for all function steps.");
       return;
@@ -836,7 +850,10 @@ export function StepEditor({
                               ))}
                             </div>
                             {capturingStepIndex != null && capturingStepIndex !== idx && <div className="muted small">Finish current capture first.</div>}
-                            <div className="muted small">Add Shift for uppercase or symbols that need it.</div>
+                            {(() => {
+                              const metaLabel = MODIFIER_BITS.find((m) => m.bit === 8)!.label;
+                              return <div className="muted small">Capture reads the physical key and modifiers; {metaLabel} usually cannot be captured.</div>;
+                            })()}
                           </div>
                           <div className="timing-row">
                             <label className="inline-input">
