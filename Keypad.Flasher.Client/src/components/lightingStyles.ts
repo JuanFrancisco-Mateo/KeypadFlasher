@@ -40,14 +40,12 @@ export const getPassiveLightingStyle = (input: PassiveLightingStyleInput): { cla
     const hueOffsetSteps = (ledIndex * 8) % 192; // firmware: per-LED hue offset = led * 8 (mod 192)
     const delaySec = -(hueOffsetSteps * step) / 1000; // align phase offset in time
     const rainbowAlpha = (muted ? MUTED_ALPHA_SCALE : 1) * BASE_RAINBOW_ALPHA;
-    return {
-      className: "rainbow",
-      style: {
-        ["--rainbow-duration" as any]: `${durationSec}s`,
-        ["--rainbow-delay" as any]: `${delaySec}s`,
-        ["--rainbow-alpha" as any]: `${rainbowAlpha}`,
-      },
+    const rainbowStyle: CSSProperties = {
+      "--rainbow-duration": `${durationSec}s`,
+      "--rainbow-delay": `${delaySec}s`,
+      "--rainbow-alpha": `${rainbowAlpha}`,
     };
+    return { className: "rainbow", style: rainbowStyle };
   }
 
   if (passiveMode === "Static" || passiveMode === "Breathing") {
@@ -60,24 +58,22 @@ export const getPassiveLightingStyle = (input: PassiveLightingStyleInput): { cla
     const primaryAlpha = BASE_PRIMARY_ALPHA * alphaScale;
     const secondaryAlpha = BASE_SECONDARY_ALPHA * alphaScale;
     const borderAlpha = BASE_BORDER_ALPHA * alphaScale;
-    const breathingProps: { className?: string; style?: CSSProperties } = passiveMode === "Breathing"
+    const breathingStyle: CSSProperties | undefined = passiveMode === "Breathing"
       ? {
-        className: "breathing",
-        style: {
-          ["--breathing-duration" as any]: `${durationSec}s`,
-          ["--breathing-min" as any]: `${Math.max(0.05, Math.min(0.95, minPercent / 100))}`,
-        },
+        "--breathing-duration": `${durationSec}s`,
+        "--breathing-min": `${Math.max(0.05, Math.min(0.95, minPercent / 100))}`,
       }
-      : {};
+      : undefined;
+    const breathingClass = passiveMode === "Breathing" ? "breathing" : undefined;
 
     return {
-      ...(breathingProps.className ? { className: breathingProps.className } : {}),
+      ...(breathingClass ? { className: breathingClass } : {}),
       style: {
         background: "var(--card-bg)",
         backgroundImage: `linear-gradient(135deg, rgba(${color.r}, ${color.g}, ${color.b}, ${primaryAlpha}), rgba(${color.r}, ${color.g}, ${color.b}, ${secondaryAlpha}))`,
         boxShadow: "var(--shadow-strong)",
         borderColor: `rgba(${color.r}, ${color.g}, ${color.b}, ${borderAlpha})`,
-        ...(breathingProps.style ?? {}),
+        ...(breathingStyle ?? {}),
       },
     };
   }

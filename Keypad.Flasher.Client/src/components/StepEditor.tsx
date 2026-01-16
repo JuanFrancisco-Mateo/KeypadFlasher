@@ -113,10 +113,6 @@ export function StepEditor({
       if (binding?.type === "Sequence" && binding.steps) {
         return binding.steps.map(normalizeIncomingStep);
       }
-      if ((binding as any)?.functionPointer) {
-        const fn = (binding as any).functionPointer as string;
-        return [{ kind: "Function", functionPointer: fn, functionValue: 1, gapMs: 0 }];
-      }
       return [];
     })();
     setEditSteps(nextSteps);

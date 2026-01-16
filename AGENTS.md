@@ -24,4 +24,4 @@ Keypad.Flasher.Client:
 - This is a React frontend application
 - Use `npm run build` to compile
 - Always compile after changing frontend code to test
-- TypeScript is used with strict type checking enabled, avoid using `any` type
+- TypeScript is used with strict type checking enabled, do not use the `any` type unless absolutely necessary
