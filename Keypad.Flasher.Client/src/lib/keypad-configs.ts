@@ -170,7 +170,7 @@ export const DEVICE_PROFILES: Record<string, KnownDeviceProfile> = {
     },
   },
   "165-238-32-190": {
-    name: "Sikai 6 Keys 1 Knob",
+    name: "6 Keys 1 Knob (Sikai)",
     hideFromDemo: true,
     layout: {
       buttons: [

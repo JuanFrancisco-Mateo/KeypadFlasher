@@ -87,6 +87,7 @@ They all have USB-C connectors unless otherwise noted:
 - [3 Keys 1 Knob](https://www.aliexpress.com/item/1005006627901462.html?spm=a2g0o.order_detail.order_detail_item.3.295bf19c3IDC8m)
 - [4 Keys](https://www.aliexpress.com/item/1005008020501723.html?spm=a2g0o.order_detail.order_detail_item.3.7d51f19cZTzoOY)
 - [6 Keys 1 Knob](https://www.aliexpress.com/item/1005009812219099.html?spm=a2g0o.order_detail.order_detail_item.3.6afff19cXlayc4)
+- [6 Keys 1 Knob (Sikai)](https://sikaicase.com/products/6key-usb-c-macro-programmable-keyboard-osu-one-handed-mechanical-keyboard-with-knobs-6-fully-programmable-keys-hotkeys-rgb-backlit-mini-keypad-for-pc-gamer-1)
 - [10 Keys](https://www.aliexpress.com/item/1005005509140217.html?spm=a2g0o.order_detail.order_detail_item.7.3c7af19cNrdJJB)
   - Uses a Micro-USB connector, will need a Micro-USB to USB-C adapter and USB-C cable to use the bootloader adapter / contraption above
   - Uses fixed blue LEDs that are always on and cannot be controlled by the firmware
