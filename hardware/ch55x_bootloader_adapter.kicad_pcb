@@ -2258,7 +2258,7 @@
 		(uuid "599e2299-15ad-454a-a6b9-f9886167c1a7")
 	)
 	(gr_text "BOOT"
-		(at 114.1 69.7 0)
+		(at 114.1 69.8 0)
 		(layer "F.SilkS")
 		(uuid "23a93390-a959-469f-a08a-d2e1c8a5eed8")
 		(effects
@@ -2271,7 +2271,7 @@
 		)
 	)
 	(gr_text "RESET"
-		(at 96.3 69.7 0)
+		(at 96.3 69.8 0)
 		(layer "F.SilkS")
 		(uuid "8138428c-3e2f-4425-b9ea-4029a58181ad")
 		(effects
@@ -2284,7 +2284,7 @@
 		)
 	)
 	(gr_text "CH55x Bootloader Adapter"
-		(at 93.425 54 0)
+		(at 93.425 53.7 0)
 		(layer "F.SilkS")
 		(uuid "f9764109-96cb-4375-98d4-a95de9b28592")
 		(effects
@@ -2296,7 +2296,7 @@
 		)
 	)
 	(gr_text "Enter bootloader: Press RESET while holding BOOT key\nRestart device / exit bootloader: Press RESET"
-		(at 135.1 68.425 0)
+		(at 134.9 68.4 0)
 		(layer "B.SilkS")
 		(uuid "42283270-0bab-48ea-af07-93e09d78bf8c")
 		(effects
@@ -2309,7 +2309,7 @@
 		)
 	)
 	(gr_text "Insert this adapter to host device (e.g. PC)\nInsert CH55x device (e.g. Keypad) into receptable"
-		(at 134.925 57.575 0)
+		(at 134.9 57.5 0)
 		(layer "B.SilkS")
 		(uuid "8e8a8a90-a371-431b-b2aa-157535464ab8")
 		(effects
@@ -2322,7 +2322,7 @@
 		)
 	)
 	(gr_text "https://github.com/AmyJeanes/KeypadFlasher"
-		(at 122.65 71.125 0)
+		(at 122.65 71 0)
 		(layer "B.SilkS")
 		(uuid "9a0761f8-ff64-4e10-8bc8-102dd5f819e3")
 		(effects
@@ -2334,7 +2334,7 @@
 		)
 	)
 	(gr_text "CH55x Bootloader Adapter"
-		(at 126 54 0)
+		(at 126 53.7 0)
 		(layer "B.SilkS")
 		(uuid "9ff58dd8-673b-4437-bbe1-336d9fb39eca")
 		(effects
