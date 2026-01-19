@@ -2,8 +2,14 @@ name: CI
 on:
   push:
     branches:
-    - main
-    - renovate/*
+      - main
+      - renovate/*
+    paths:
+      - .github/workflows/ci.yaml
+      - Keypad.Firmware/**
+      - Keypad.Flasher.Server/**
+      - Keypad.Flasher.Server.Tests/**
+      - Keypad.Flasher.Client/**
   pull_request:
     branches: [ main ]
   workflow_dispatch:
