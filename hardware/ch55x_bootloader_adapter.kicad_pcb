@@ -2322,7 +2322,7 @@
 		)
 	)
 	(gr_text "https://github.com/AmyJeanes/KeypadFlasher"
-		(at 122.5 71 0)
+		(at 122.65 71.125 0)
 		(layer "B.SilkS")
 		(uuid "9a0761f8-ff64-4e10-8bc8-102dd5f819e3")
 		(effects
