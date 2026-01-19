@@ -6,10 +6,7 @@ on:
       - renovate/*
     paths:
       - .github/workflows/ci.yaml
-      - Keypad.Firmware/**
-      - Keypad.Flasher.Server/**
-      - Keypad.Flasher.Server.Tests/**
-      - Keypad.Flasher.Client/**
+      - src/**
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -30,15 +27,18 @@ jobs:
 
       - name: Build solution
         run: dotnet build --configuration Release
+        working-directory: src
 
       - name: Run tests
         run: dotnet test --no-build --configuration Release
+        working-directory: src
 
       - name: Build Docker images
         run: |
           app="keypad-flasher"
           echo "Building $app"
           docker build -t $app -f "Keypad.Flasher.Server/Dockerfile" .
+        working-directory: src
 
       - name: Push Docker images
         id: push_image
@@ -54,6 +54,7 @@ jobs:
           echo "image_sha=$IMAGE_SHA" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: src
         if: github.ref == 'refs/heads/main'
 
   deploy:

@@ -111,7 +111,7 @@ These devices have been tested and found to use different types of microcontroll
   - Pins are labelled `P<port>.<bit>` (e.g. `P3.2` for pin `32`).
   - `active_low` means the signal reads low when pressed; `active` shows whether the firmware considers the input asserted.
   - Lines marked `configured` came from an existing config; unmarked lines help you find unused pins.
-- Add an entry keyed by the bootloader ID to [Keypad.Flasher.Client/src/lib/keypad-configs.ts](Keypad.Flasher.Client/src/lib/keypad-configs.ts). Provide a friendly `name`, fill `buttons` with pin numbers, `activeLow`, optional `ledIndex`, `bootloaderOnBoot`, and `bootloaderChordMember`, add any `encoders`, and set `neoPixelPin` (or `-1` if none). Example:
+- Add an entry keyed by the bootloader ID to [src/Keypad.Flasher.Client/src/lib/keypad-configs.ts](src/Keypad.Flasher.Client/src/lib/keypad-configs.ts). Provide a friendly `name`, fill `buttons` with pin numbers, `activeLow`, optional `ledIndex`, `bootloaderOnBoot`, and `bootloaderChordMember`, add any `encoders`, and set `neoPixelPin` (or `-1` if none). Example:
 
 ```ts
 "126-80-44-189": {
@@ -142,19 +142,19 @@ First time setup:
 ```bash
 arduino-cli core install CH55xDuino:mcs51
 git clone https://github.com/AmyJeanes/KeypadFlasher
-cd KeypadFlasher/Keypad.Flasher.Client
+cd KeypadFlasher/src/Keypad.Flasher.Client
 npm install
 ```
 
 Compile device firmware manually:
 ```bash
-cd Keypad.Firmware
+cd src/Keypad.Firmware
 arduino-cli compile --fqbn CH55xDuino:mcs51:ch552:usb_settings=user148,clock=16internal --export-binaries
 ```
 
 You can also configure the Arduino IDE and use that to compile and upload the firmware if you prefer a GUI:
 - Open Arduino IDE
-- Open the `Keypad.Firmware/Keypad.Firmware.ino` project
+- Open the `src/Keypad.Firmware/Keypad.Firmware.ino` project
 - Select the board "CH55xDuino" on Tools > Board
 - Select "P3.6 (D+) Pull up" on Tools -> Bootloader
 - Select "16MHz Internal 3.5V or 5V" on Tools -> Clock
@@ -166,14 +166,14 @@ You can also configure the Arduino IDE and use that to compile and upload the fi
 
 Run the web app locally:
 ```
-dotnet run --project Keypad.Flasher.Server
+dotnet run --project src/Keypad.Flasher.Server
 ```
 
 or
 
 Build and run docker image:
 ```
-docker build -t keypad -f .\Keypad.Flasher.Server\Dockerfile .
+docker build -t keypad -f ./src/Keypad.Flasher.Server/Dockerfile ./src
 docker run -p 54196:8080 --rm -it -m 256MB keypad
 ```
 
