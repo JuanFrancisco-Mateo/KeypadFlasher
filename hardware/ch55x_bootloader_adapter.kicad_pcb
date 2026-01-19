@@ -563,6 +563,19 @@
 				)
 			)
 		)
+		(property "LCSC" "C149504"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "b1dd2484-60fe-4501-939b-27f84881b551")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
 		(property ki_fp_filters "R_*")
 		(path "/84903425-3117-43df-a727-9cc7d01f8d26")
 		(sheetname "/")
@@ -658,7 +671,7 @@
 		(at 90.26952 61.499873 -90)
 		(descr "USB-A-TH_U-G-04WD-W-01 footprint")
 		(tags "USB-A-TH_U-G-04WD-W-01 footprint C98125")
-		(property "Reference" "U1"
+		(property "Reference" "USB-A-M1"
 			(at 0 -3 90)
 			(layer "F.SilkS")
 			(hide yes)
@@ -1608,7 +1621,7 @@
 		(at 128.862306 61.5 90)
 		(descr "USB-A-SMD_U-A-24SS-W-2 footprint")
 		(tags "USB-A-SMD_U-A-24SS-W-2 footprint C530629")
-		(property "Reference" "USB1"
+		(property "Reference" "USB-A-F1"
 			(at 0 -6.237719 90)
 			(layer "F.SilkS")
 			(hide yes)
@@ -2271,15 +2284,65 @@
 		)
 	)
 	(gr_text "CH55x Bootloader Adapter"
-		(at 93.4 54 0)
+		(at 93.425 54 0)
 		(layer "F.SilkS")
-		(uuid "9ff58dd8-673b-4437-bbe1-336d9fb39eca")
+		(uuid "f9764109-96cb-4375-98d4-a95de9b28592")
 		(effects
 			(font
 				(size 1.5 1.5)
 				(thickness 0.1875)
 			)
 			(justify left bottom)
+		)
+	)
+	(gr_text "Enter bootloader: Press RESET while holding BOOT key\nRestart device / exit bootloader: Press RESET"
+		(at 135.1 68.425 0)
+		(layer "B.SilkS")
+		(uuid "42283270-0bab-48ea-af07-93e09d78bf8c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.2)
+				(bold yes)
+			)
+			(justify left bottom mirror)
+		)
+	)
+	(gr_text "Insert this adapter to host device (e.g. PC)\nInsert CH55x device (e.g. Keypad) into receptable"
+		(at 134.925 57.575 0)
+		(layer "B.SilkS")
+		(uuid "8e8a8a90-a371-431b-b2aa-157535464ab8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.2)
+				(bold yes)
+			)
+			(justify left bottom mirror)
+		)
+	)
+	(gr_text "https://github.com/AmyJeanes/KeypadFlasher"
+		(at 122.5 71 0)
+		(layer "B.SilkS")
+		(uuid "9a0761f8-ff64-4e10-8bc8-102dd5f819e3")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom mirror)
+		)
+	)
+	(gr_text "CH55x Bootloader Adapter"
+		(at 126 54 0)
+		(layer "B.SilkS")
+		(uuid "9ff58dd8-673b-4437-bbe1-336d9fb39eca")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.1875)
+			)
+			(justify left bottom mirror)
 		)
 	)
 	(segment
@@ -2723,14 +2786,6 @@
 		(uuid "22d45fb8-168f-4a94-9670-cba2c67e93a5")
 	)
 	(segment
-		(start 127 53.875032)
-		(end 124.424968 53.875032)
-		(width 0.2)
-		(layer "F.Cu")
-		(net 7)
-		(uuid "5285555c-b77e-46a7-b244-63d2c90cba07")
-	)
-	(segment
 		(start 105.34 60.585)
 		(end 103.985 60.585)
 		(width 0.2)
@@ -2755,12 +2810,12 @@
 		(uuid "8de5116d-7ae9-438d-824d-1f893399fd55")
 	)
 	(segment
-		(start 126.9746 69.124968)
-		(end 124.424968 69.124968)
+		(start 127 53.875032)
+		(end 133.100076 53.875032)
 		(width 0.2)
 		(layer "F.Cu")
 		(net 7)
-		(uuid "90535921-42a5-415c-9952-794976110a1d")
+		(uuid "92b4bd99-174c-40e3-88b5-4717fc400234")
 	)
 	(segment
 		(start 89.26952 67.299848)
@@ -2771,20 +2826,28 @@
 		(uuid "9d81e283-4d16-4c74-a777-8221a9b6f50c")
 	)
 	(segment
-		(start 124.424968 69.124968)
-		(end 124.4 69.1)
-		(width 0.2)
-		(layer "F.Cu")
-		(net 7)
-		(uuid "a85448f9-99d3-431a-968d-89f44741bf9f")
-	)
-	(segment
 		(start 103.985 60.585)
 		(end 103.7 60.3)
 		(width 0.2)
 		(layer "F.Cu")
 		(net 7)
 		(uuid "b6c9ebd1-77ae-4171-94f6-c30f2338b2ce")
+	)
+	(segment
+		(start 126.9746 69.124968)
+		(end 133.074676 69.124968)
+		(width 0.2)
+		(layer "F.Cu")
+		(net 7)
+		(uuid "f3468260-4faa-4d7d-ae98-6b566be5793c")
+	)
+	(via
+		(at 130.025 69.124968)
+		(size 0.6)
+		(drill 0.3)
+		(layers "F.Cu" "B.Cu")
+		(net 7)
+		(uuid "1b1e773c-8244-40b4-84a1-7483da39defa")
 	)
 	(via
 		(at 103.7 60.3)
@@ -2793,14 +2856,6 @@
 		(layers "F.Cu" "B.Cu")
 		(net 7)
 		(uuid "1bc13727-affe-4e31-b687-dac93a3c41bf")
-	)
-	(via
-		(at 124.4 69.1)
-		(size 0.6)
-		(drill 0.3)
-		(layers "F.Cu" "B.Cu")
-		(net 7)
-		(uuid "516e85cc-605b-480c-84b1-15410cc72d57")
 	)
 	(via
 		(at 92.3 67.3)
@@ -2819,12 +2874,12 @@
 		(uuid "a8750be8-2de1-42ce-b075-deb71c3444f0")
 	)
 	(via
-		(at 124.4 53.9)
+		(at 130.05 53.875032)
 		(size 0.6)
 		(drill 0.3)
 		(layers "F.Cu" "B.Cu")
 		(net 7)
-		(uuid "b7be196d-ed2e-4ce3-86bc-5f489e6d247e")
+		(uuid "b070db89-63b5-4a54-ae6a-b7a64d716733")
 	)
 	(zone
 		(net 7)

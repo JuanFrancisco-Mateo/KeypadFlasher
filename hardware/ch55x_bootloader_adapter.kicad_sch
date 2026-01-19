@@ -1423,7 +1423,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1ae70a0a-17b3-499d-9869-f60af13d7f52")
-		(property "Reference" "USB1"
+		(property "Reference" "USB-A-F1"
 			(at 158.75 45.72 0)
 			(effects
 				(font
@@ -1499,7 +1499,7 @@
 		(instances
 			(project ""
 				(path "/16bf942e-60cf-44bb-b9e1-b94d352868d6"
-					(reference "USB1")
+					(reference "USB-A-F1")
 					(unit 1)
 				)
 			)
@@ -1932,7 +1932,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "dbb909e3-e3b6-4a53-bb82-3453be7f4cac")
-		(property "Reference" "U1"
+		(property "Reference" "USB-A-M1"
 			(at 38.1 55.8799 0)
 			(effects
 				(font
@@ -2010,7 +2010,7 @@
 		(instances
 			(project ""
 				(path "/16bf942e-60cf-44bb-b9e1-b94d352868d6"
-					(reference "U1")
+					(reference "USB-A-M1")
 					(unit 1)
 				)
 			)
