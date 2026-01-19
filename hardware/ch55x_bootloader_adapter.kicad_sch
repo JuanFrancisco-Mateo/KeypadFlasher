@@ -2262,12 +2262,6 @@
 		(uuid "5c919081-e46e-4d54-a0c7-445f16fb2527")
 	)
 	(junction
-		(at 173.99 27.94)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "72db71bc-5bc1-4239-80b5-47e727c36d34")
-	)
-	(junction
 		(at 53.34 39.37)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2304,12 +2298,28 @@
 		(uuid "620c19bc-6506-4258-9589-e360aa7d9d3e")
 	)
 	(no_connect
+		(at 49.53 78.74)
+		(uuid "acfa1a38-82b3-4629-8130-45213566ce19")
+	)
+	(no_connect
+		(at 173.99 83.82)
+		(uuid "ae779e2f-b8e1-4116-9c7a-9d0df5321cf3")
+	)
+	(no_connect
 		(at 173.99 55.88)
 		(uuid "cc691d53-65a1-4308-8782-19b0cc1a0ea0")
 	)
 	(no_connect
+		(at 49.53 76.2)
+		(uuid "db9fa9f2-7670-4b2d-9ec4-fce2138b77a4")
+	)
+	(no_connect
 		(at 173.99 60.96)
 		(uuid "ec824901-c699-4d9c-b1ef-6935c003fdcf")
+	)
+	(no_connect
+		(at 173.99 86.36)
+		(uuid "ef0bada2-9b60-4df0-b067-624802cfca5b")
 	)
 	(wire
 		(pts
@@ -2691,16 +2701,6 @@
 		)
 		(uuid "faee3c10-8ba7-4239-8841-336190e8fd05")
 	)
-	(label "SBU1"
-		(at 49.53 76.2 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "1bc97de8-9420-4d2f-b57e-180e0f506c8a")
-	)
 	(label "CC1"
 		(at 49.53 53.34 0)
 		(effects
@@ -2710,16 +2710,6 @@
 			(justify left bottom)
 		)
 		(uuid "1fa16cb7-c08b-4dc9-a20d-7c1bbc881687")
-	)
-	(label "GND"
-		(at 152.4 86.36 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "24648ed4-28aa-46d9-ad3b-dab5eee7095c")
 	)
 	(label "CC1"
 		(at 173.99 33.02 0)
@@ -2771,16 +2761,6 @@
 		)
 		(uuid "62e2c280-9eb1-490e-ac64-c4c1763f55d1")
 	)
-	(label "SBU2"
-		(at 49.53 78.74 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "6f8cda18-2828-44a0-b34b-35c07e365e87")
-	)
 	(label "GND"
 		(at 26.67 86.36 0)
 		(effects
@@ -2800,16 +2780,6 @@
 			(justify left bottom)
 		)
 		(uuid "99881f9b-ccb4-46b1-b5d7-648a5c4893a0")
-	)
-	(label "SBU2"
-		(at 173.99 86.36 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "9a55c18f-e590-4c43-ba08-3070e546d5b1")
 	)
 	(label "GND"
 		(at 158.75 93.98 0)
@@ -2850,16 +2820,6 @@
 			(justify left bottom)
 		)
 		(uuid "b598e147-166b-491b-b0c0-6853dd5d635c")
-	)
-	(label "SBU1"
-		(at 173.99 83.82 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "cc337bcd-ad32-49b0-abcb-d2bb99d4074e")
 	)
 	(label "GND"
 		(at 34.29 86.36 0)
