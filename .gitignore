@@ -429,5 +429,5 @@ FodyWeavers.xsd
 
 # App
 
-Keypad.Firmware/build/
+src/Keypad.Firmware/build/
 *.tfvars
